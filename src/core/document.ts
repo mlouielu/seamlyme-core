@@ -5,10 +5,11 @@ import {
 } from './catalog.js';
 import {buildDependencyGraph, resolveMeasurements} from './expressions.js';
 import type {
-  DocumentPatch,
   MeasurementMetaPatch,
   MeasurementMoveDirection,
   NameConflictResolution,
+  DocumentPatch,
+  MeasurementRow,
   SeamlyDocument,
   SeamlyMeasurement,
   SeamlyMultisizeMeasurement,
@@ -150,11 +151,13 @@ export function moveMeasurements(
   const selected = order.filter(name => uniqueNames.includes(name));
   const remaining = order.filter(name => !uniqueNames.includes(name));
   const index = clamp(targetIndex, 0, remaining.length);
-  setOrder(doc, [
+  const nextOrder = [
     ...remaining.slice(0, index),
     ...selected,
     ...remaining.slice(index),
-  ]);
+  ];
+
+  setOrder(doc, nextOrder);
   return doc;
 }
 
@@ -291,6 +294,60 @@ export function listCustom(
   );
 }
 
+export function getMeasurementRows(doc: SeamlyDocument): MeasurementRow[] {
+  if (doc.type === 'multisize') {
+    return ordered(
+      doc.multisizeMeasurementOrder,
+      doc.multisizeMeasurements,
+    ).map((measurement, index) => ({
+      index,
+      id: measurement.id,
+      name: measurement.name,
+      label: measurement.fullName || measurement.name,
+      description: measurement.desc,
+      raw: `base=${formatMaybeNumber(measurement.base)}; size_increase=${formatMaybeNumber(measurement.sizeIncrement)}; height_increase=${formatMaybeNumber(measurement.heightIncrement)}`,
+      value: measurement.base,
+      unit: doc.unit,
+      hasValue: measurement.hasValue,
+      isResolved: measurement.hasValue && measurement.base !== null,
+      isKnown: isKnownMeasurementName(measurement.name),
+      isCustom: isCustomMeasurementName(measurement.name),
+      dependencies: [],
+      dependents: [],
+      error: null,
+    }));
+  }
+
+  const dependentsByName = new Map<string, string[]>();
+  for (const measurement of ordered(doc.measurementOrder, doc.measurements)) {
+    for (const dependency of measurement.dependencies) {
+      const dependents = dependentsByName.get(dependency) ?? [];
+      dependents.push(measurement.name);
+      dependentsByName.set(dependency, dependents);
+    }
+  }
+
+  return ordered(doc.measurementOrder, doc.measurements).map(
+    (measurement, index) => ({
+      index,
+      id: measurement.id,
+      name: measurement.name,
+      label: measurement.fullName || measurement.name,
+      description: measurement.desc,
+      raw: measurement.raw,
+      value: measurement.resolved,
+      unit: doc.unit,
+      hasValue: measurement.hasValue,
+      isResolved: measurement.hasValue && measurement.resolved !== null,
+      isKnown: isKnownMeasurementName(measurement.name),
+      isCustom: isCustomMeasurementName(measurement.name),
+      dependencies: [...measurement.dependencies],
+      dependents: dependentsByName.get(measurement.name) ?? [],
+      error: measurement.error,
+    }),
+  );
+}
+
 export function validateKnownNames(doc: SeamlyDocument): ValidationIssue[] {
   return listAll(doc)
     .filter(
@@ -408,6 +465,10 @@ function setOrder(doc: SeamlyDocument, order: string[]): void {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function formatMaybeNumber(value: number | null): string {
+  return value === null ? '' : String(value);
 }
 
 function isKnownMeasurementName(name: string): boolean {

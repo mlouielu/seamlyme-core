@@ -133,3 +133,21 @@ export interface NameConflictResolution {
   resolved: string;
   changed: boolean;
 }
+
+export interface MeasurementRow {
+  index: number;
+  id: string;
+  name: string;
+  label: string;
+  description: string;
+  raw: string;
+  value: number | null;
+  unit: SeamlyUnit;
+  hasValue: boolean;
+  isResolved: boolean;
+  isKnown: boolean;
+  isCustom: boolean;
+  dependencies: string[];
+  dependents: string[];
+  error: string | null;
+}

@@ -4,26 +4,33 @@ import {join} from 'node:path';
 import {describe, expect, it} from 'vitest';
 import {
   addMeasurement,
+  addMeasurementAfter,
   buildDependencyGraph,
   calculateMultisizeValue,
+  cloneDocument,
   detectMeasurementFile,
   detectCycles,
   extractDependencies,
   findDependents,
   getMeasurement,
+  getMeasurementRows,
   listAll,
   listCustom,
   listKnown,
   loadMeasurementFile,
   modernExtensionForType,
+  moveMeasurement,
+  moveMeasurements,
   parseSmis,
   removeMeasurement,
   renameMeasurement,
+  resolveMeasurementNameConflict,
   resolveAll,
   saveMeasurementFile,
   serializeSmis,
   setMeasurementMeta,
   setMeasurementValue,
+  updateDocument,
   validateDocument,
   validateKnownNames,
   validateResolvedMeasurements,
@@ -401,6 +408,192 @@ describe('SeamlyME core', () => {
     resolveAll(doc);
     expect(detectCycles(doc)).toEqual([]);
     expect(doc.measurements['@c'].resolved).toBe(3);
+  });
+
+  it('moves one measurement by direction or index', () => {
+    const doc = parseSmis(
+      '<smis><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="@a" value="1"/><m name="@b" value="2"/><m name="@c" value="3"/><m name="@d" value="4"/></body-measurements></smis>',
+      {includeCatalog: false},
+    );
+
+    moveMeasurement(doc, '@c', 'up');
+    expect(doc.measurementOrder).toEqual(['@a', '@c', '@b', '@d']);
+
+    moveMeasurement(doc, '@c', 'bottom');
+    expect(doc.measurementOrder).toEqual(['@a', '@b', '@d', '@c']);
+
+    moveMeasurement(doc, '@c', 1);
+    expect(doc.measurementOrder).toEqual(['@a', '@c', '@b', '@d']);
+
+    moveMeasurement(doc, '@c', 'top');
+    expect(doc.measurementOrder).toEqual(['@c', '@a', '@b', '@d']);
+  });
+
+  it('moves multiple selected measurements as one block', () => {
+    const doc = parseSmis(
+      '<smis><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="@a" value="1"/><m name="@b" value="2"/><m name="@c" value="3"/><m name="@d" value="4"/><m name="@e" value="5"/></body-measurements></smis>',
+      {includeCatalog: false},
+    );
+
+    moveMeasurements(doc, ['@b', '@d'], 3);
+    expect(doc.measurementOrder).toEqual(['@a', '@c', '@e', '@b', '@d']);
+  });
+
+  it('adds a measurement after a target row', () => {
+    const doc = parseSmis(
+      '<smis><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="@a" value="1"/><m name="@c" value="3"/></body-measurements></smis>',
+      {includeCatalog: false},
+    );
+
+    addMeasurementAfter(doc, '@a', '@b', '@a + 1');
+    expect(doc.measurementOrder).toEqual(['@a', '@b', '@c']);
+    expect(doc.measurements['@b'].resolved).toBe(2);
+  });
+
+  it('clones and immutably updates document metadata and measurements', () => {
+    const doc = parseSmis(
+      '<smis><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal><given-name>Jane</given-name></personal><body-measurements><m name="@a" value="1"/></body-measurements></smis>',
+      {includeCatalog: false},
+    );
+
+    const cloned = cloneDocument(doc);
+    cloned.personal['given-name'] = 'Clone';
+    expect(doc.personal['given-name']).toBe('Jane');
+
+    const updated = updateDocument(doc, {
+      notes: 'Edited',
+      personal: {'given-name': 'Updated'},
+      measurements: {
+        '@a': {
+          value: '2',
+          fullName: 'A measurement',
+          description: 'Edited row',
+        },
+      },
+    });
+
+    expect(updated).not.toBe(doc);
+    expect(updated.notes).toBe('Edited');
+    expect(updated.personal['given-name']).toBe('Updated');
+    expect(updated.measurements['@a'].resolved).toBe(2);
+    expect(updated.measurements['@a'].fullName).toBe('A measurement');
+    expect(doc.measurements['@a'].resolved).toBe(1);
+  });
+
+  it('resolves measurement name conflicts directly', () => {
+    const doc = parseSmis(
+      '<smis><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="@custom" value="1"/><m name="@custom_1" value="2"/></body-measurements></smis>',
+      {includeCatalog: false},
+    );
+
+    expect(resolveMeasurementNameConflict(doc, '@custom')).toEqual({
+      requested: '@custom',
+      resolved: '@custom_2',
+      changed: true,
+    });
+    expect(resolveMeasurementNameConflict(doc, '@new')).toEqual({
+      requested: '@new',
+      resolved: '@new',
+      changed: false,
+    });
+  });
+
+  it('returns frontend-friendly individual measurement rows', () => {
+    const doc = parseSmis(
+      '<smis><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="height" value="100"/><m name="@half" value="height / 2" full_name="Half height" description="Derived"/></body-measurements></smis>',
+      {includeCatalog: false},
+    );
+
+    expect(getMeasurementRows(doc)).toEqual([
+      expect.objectContaining({
+        index: 0,
+        id: 'A01',
+        name: 'height',
+        label: 'Height: Total',
+        raw: '100',
+        value: 100,
+        unit: 'cm',
+        isResolved: true,
+        isKnown: true,
+        isCustom: false,
+        dependencies: [],
+        dependents: ['@half'],
+        error: null,
+      }),
+      expect.objectContaining({
+        index: 1,
+        id: '',
+        name: '@half',
+        label: 'Half height',
+        description: 'Derived',
+        raw: 'height / 2',
+        value: 50,
+        unit: 'cm',
+        isResolved: true,
+        isKnown: false,
+        isCustom: true,
+        dependencies: ['height'],
+        dependents: [],
+        error: null,
+      }),
+    ]);
+  });
+
+  it('returns frontend-friendly multisize measurement rows', () => {
+    const doc = parseSmis(
+      '<smms><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><size>48</size><height>176</height><body-measurements><m name="G01" base="176" size_increase="0" height_increase="1" full_name="Height"/><m name="@custom" base="10" size_increase="1" height_increase="2"/></body-measurements></smms>',
+    );
+
+    expect(getMeasurementRows(doc)).toEqual([
+      expect.objectContaining({
+        index: 0,
+        id: 'G01',
+        name: 'G01',
+        label: 'Height',
+        raw: 'base=176; size_increase=0; height_increase=1',
+        value: 176,
+        unit: 'cm',
+        isResolved: true,
+        isKnown: true,
+        isCustom: false,
+      }),
+      expect.objectContaining({
+        index: 1,
+        id: '',
+        name: '@custom',
+        label: '@custom',
+        raw: 'base=10; size_increase=1; height_increase=2',
+        value: 10,
+        unit: 'cm',
+        isResolved: true,
+        isKnown: false,
+        isCustom: true,
+      }),
+    ]);
+  });
+
+  it('marks unresolved and missing rows distinctly', () => {
+    const doc = parseSmis(
+      '<smis><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="@bad" value="@missing + 1"/><m name="@blank" value=""/></body-measurements></smis>',
+      {includeCatalog: false},
+    );
+
+    expect(getMeasurementRows(doc)).toEqual([
+      expect.objectContaining({
+        name: '@bad',
+        hasValue: true,
+        isResolved: false,
+        value: null,
+        error: 'Unresolved dependency: @missing',
+      }),
+      expect.objectContaining({
+        name: '@blank',
+        hasValue: false,
+        isResolved: false,
+        value: null,
+        error: null,
+      }),
+    ]);
   });
 });
 

@@ -31,6 +31,10 @@ export function extractDependencies(
     if (re.test(expr)) deps.add(name);
   }
 
+  for (const custom of findCustomReferences(expr)) {
+    deps.add(custom);
+  }
+
   return [...deps].sort();
 }
 
@@ -167,5 +171,11 @@ function replaceMeasurementReference(
   return expr.replace(
     new RegExp(`(?<![\\w@])${escaped}(?![\\w])`, 'g'),
     newName,
+  );
+}
+
+function findCustomReferences(expr: string): string[] {
+  return [...expr.matchAll(/(?<![\w@])@[A-Za-z_][A-Za-z0-9_]*/g)].map(
+    match => match[0],
   );
 }

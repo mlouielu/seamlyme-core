@@ -12,6 +12,7 @@ export {
   detectCycles,
   findDependents,
   getMeasurement,
+  getMeasurementRows,
   listAll,
   listCustom,
   listKnown,
