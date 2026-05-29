@@ -1,4 +1,4 @@
-import {mkdirSync, readFileSync, rmSync} from 'node:fs';
+import {mkdirSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {describe, expect, it} from 'vitest';
@@ -35,66 +35,84 @@ import {
   validateKnownNames,
   validateResolvedMeasurements,
 } from '../src/core/index.js';
+import {generateFullBodySmis, generateSmisXml} from './generator.js';
 
 describe('SeamlyME core', () => {
+  it('handles various generated measurement file complexities', () => {
+    const empty = parseSmis(generateSmisXml({complexity: 'empty'}), {
+      includeCatalog: false,
+    });
+    expect(empty.measurementOrder).toHaveLength(0);
+
+    const some = parseSmis(generateSmisXml({complexity: 'some'}), {
+      includeCatalog: false,
+    });
+    expect(some.measurementOrder.length).toBeGreaterThan(0);
+
+    const errors = parseSmis(generateSmisXml({complexity: 'errors'}), {
+      includeCatalog: false,
+    });
+    expect(validateDocument(errors).length).toBeGreaterThan(0);
+    expect(errors.measurements['@missing'].error).toContain(
+      'Unresolved dependency',
+    );
+  });
+
   it('parses SMIS metadata and catalog-backed measurements', () => {
-    const xml = readFileSync('../example_measurements.smis', 'utf8');
-    const doc = parseSmis(xml, {filename: 'example_measurements.smis'});
+    const xml = generateFullBodySmis();
+    const doc = parseSmis(xml, {filename: 'full_body.smis'});
 
     expect(doc.version).toBe('0.3.4');
-    expect(doc.unit).toBe('inch');
+    expect(doc.unit).toBe('cm');
     expect(doc.pmSys).toBe('998');
-    expect(doc.personal['given-name']).toBe('Jane');
+    expect(doc.personal['given-name']).toBe('Full');
     expect(doc.measurements.height.id).toBe('A01');
     expect(doc.measurements.height.fullName).toBe('Height: Total');
     expect(doc.measurements.width_bust.hasValue).toBe(false);
   });
 
   it('resolves arithmetic formulas through the dependency graph', () => {
-    const xml = readFileSync('../example_measurements.smis', 'utf8');
+    const xml = generateFullBodySmis();
     const doc = parseSmis(xml);
 
-    expect(doc.measurements.height_neck_back_to_knee.dependencies).toEqual([
-      'height_knee',
-      'height_neck_back',
+    expect(doc.measurements['@waist_to_hip'].dependencies).toEqual([
+      'hip_circ',
+      'waist_circ',
     ]);
-    expect(
-      buildDependencyGraph(doc.measurements).height_neck_back_to_knee,
-    ).toEqual(['height_knee', 'height_neck_back']);
-    expect(doc.measurements.height_neck_back_to_knee.resolved).toBe(40);
-    expect(doc.measurements.arm_elbow_to_wrist_bent.resolved).toBe(9.5);
-    expect(doc.measurements.arm_wrist_circ.resolved).toBe(6.25);
-    expect(doc.measurements['@HJA_side_hip_depth'].resolved).toBe(9.75);
+    expect(buildDependencyGraph(doc.measurements)['@waist_to_hip']).toEqual([
+      'hip_circ',
+      'waist_circ',
+    ]);
+    expect(doc.measurements['@waist_to_hip'].resolved).toBe(26);
+    expect(doc.measurements['@total_arm'].resolved).toBe(69.5);
   });
 
   it('does not mutate the parsed document while serializing writable values', () => {
-    const xml = readFileSync('../example_meas.smis', 'utf8');
+    const xml = generateFullBodySmis();
     const doc = parseSmis(xml);
     const serialized = serializeSmis(doc);
     const reparsed = parseSmis(serialized);
 
     expect(doc.measurementOrder.slice(0, 5)).toEqual([
+      'height',
+      'bust_circ',
+      'waist_circ',
+      'hip_circ',
       'shoulder_length',
-      'height_ankle_high',
-      'arm_shoulder_tip_to_wrist_bent',
-      'arm_shoulder_tip_to_elbow_bent',
-      'arm_elbow_to_wrist_bent',
     ]);
     expect(serialized).toContain(
-      '<m name="arm_elbow_to_wrist_bent" value="(arm_shoulder_tip_to_wrist_bent - arm_shoulder_tip_to_elbow_bent)"/>',
+      '<m name="@waist_to_hip" value="hip_circ - waist_circ"',
     );
     expect(serialized).not.toContain('width_bust');
     expect(reparsed.measurementOrder.slice(0, 5)).toEqual([
+      'height',
+      'bust_circ',
+      'waist_circ',
+      'hip_circ',
       'shoulder_length',
-      'height_ankle_high',
-      'arm_shoulder_tip_to_wrist_bent',
-      'arm_shoulder_tip_to_elbow_bent',
-      'arm_elbow_to_wrist_bent',
     ]);
-    expect(reparsed.measurements.arm_elbow_to_wrist_bent.resolved).toBe(9.5);
-    expect(reparsed.measurements['@HJA_side_hip_depth'].desc).toContain(
-      '\nform being measured',
-    );
+    expect(reparsed.measurements['@waist_to_hip'].resolved).toBe(26);
+    expect(reparsed.notes).toContain('Full body');
   });
 
   it('preserves inserted individual measurement order during serialization', () => {
