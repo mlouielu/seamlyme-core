@@ -1,0 +1,27 @@
+{
+  "name": "@seamlyme/core",
+  "version": "0.1.0",
+  "private": true,
+  "license": "BSD-3-Clause-Clear",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "seamlyme-core": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "cli": "npm run build --silent && node dist/cli.js",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "expr-eval": "^2.0.2",
+    "fast-xml-parser": "^4.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
+  }
+}
