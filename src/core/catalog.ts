@@ -1,4 +1,4 @@
-import type { SeamlyMeasurementDefinition } from './types.js';
+import type {SeamlyMeasurementDefinition} from './types.js';
 
 export const SEAMLY_MEASUREMENT_ROWS = `
 A01|height|Height: Total
@@ -248,17 +248,21 @@ Q03|dart_width_waist|Dart Width: Waist
 `;
 
 export const SEAMLY_MEASUREMENT_CATALOG: SeamlyMeasurementDefinition[] =
-  SEAMLY_MEASUREMENT_ROWS.trim().split('\n').map((row) => {
-    const [id, name, fullName] = row.split('|');
-    return { id, name, fullName };
-  });
+  SEAMLY_MEASUREMENT_ROWS.trim()
+    .split('\n')
+    .map(row => {
+      const [id, name, fullName] = row.split('|');
+      return {id, name, fullName};
+    });
 
 export const SEAMLY_BY_VAR: Record<string, SeamlyMeasurementDefinition> =
-  Object.fromEntries(SEAMLY_MEASUREMENT_CATALOG.map((item) => [item.name, item]));
+  Object.fromEntries(SEAMLY_MEASUREMENT_CATALOG.map(item => [item.name, item]));
 
 export const SEAMLY_BY_ID: Record<string, SeamlyMeasurementDefinition> =
-  Object.fromEntries(SEAMLY_MEASUREMENT_CATALOG.map((item) => [item.id, item]));
+  Object.fromEntries(SEAMLY_MEASUREMENT_CATALOG.map(item => [item.id, item]));
 
-export function lookupSeamlyMeasurement(name: string): SeamlyMeasurementDefinition | undefined {
+export function lookupSeamlyMeasurement(
+  name: string,
+): SeamlyMeasurementDefinition | undefined {
   return SEAMLY_BY_VAR[name] ?? SEAMLY_BY_ID[name];
 }

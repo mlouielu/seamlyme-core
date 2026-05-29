@@ -6,6 +6,29 @@ export {
 } from './core/catalog.js';
 
 export {
+  addMeasurement,
+  addMeasurementAfter,
+  cloneDocument,
+  detectCycles,
+  findDependents,
+  getMeasurement,
+  listAll,
+  listCustom,
+  listKnown,
+  moveMeasurement,
+  moveMeasurements,
+  removeMeasurement,
+  renameMeasurement,
+  resolveAll,
+  resolveMeasurementNameConflict,
+  setMeasurementMeta,
+  setMeasurementValue,
+  updateDocument,
+  validateDocument,
+  validateKnownNames,
+} from './core/document.js';
+
+export {
   buildDependencyGraph,
   extractDependencies,
   resolveMeasurements,

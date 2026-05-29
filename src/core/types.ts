@@ -109,3 +109,27 @@ export interface MeasurementMetaPatch {
   fullName?: string;
   description?: string;
 }
+
+export type MeasurementMoveDirection = 'top' | 'up' | 'down' | 'bottom';
+
+export interface MeasurementValuePatch {
+  value?: string | number;
+  fullName?: string;
+  description?: string;
+}
+
+export interface DocumentPatch {
+  version?: string;
+  readOnly?: boolean;
+  notes?: string;
+  unit?: SeamlyUnit;
+  pmSys?: string;
+  personal?: Partial<SeamlyPersonalInfo>;
+  measurements?: Record<string, MeasurementValuePatch>;
+}
+
+export interface NameConflictResolution {
+  requested: string;
+  resolved: string;
+  changed: boolean;
+}

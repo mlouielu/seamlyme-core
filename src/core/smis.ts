@@ -1,6 +1,10 @@
-import { XMLBuilder, XMLParser } from 'fast-xml-parser';
-import { lookupSeamlyMeasurement, SEAMLY_BY_VAR, SEAMLY_MEASUREMENT_CATALOG } from './catalog.js';
-import { resolveMeasurements } from './expressions.js';
+import {XMLBuilder, XMLParser} from 'fast-xml-parser';
+import {
+  lookupSeamlyMeasurement,
+  SEAMLY_BY_VAR,
+  SEAMLY_MEASUREMENT_CATALOG,
+} from './catalog.js';
+import {resolveMeasurements} from './expressions.js';
 import type {
   MeasurementFileInfo,
   MeasurementFileType,
@@ -18,12 +22,13 @@ const parser = new XMLParser({
   trimValues: true,
   parseTagValue: false,
   parseAttributeValue: false,
-  isArray: (_name, jpath) => [
-    'smis.body-measurements.m',
-    'smms.body-measurements.m',
-    'vit.body-measurements.m',
-    'vst.body-measurements.m',
-  ].includes(jpath),
+  isArray: (_name, jpath) =>
+    [
+      'smis.body-measurements.m',
+      'smms.body-measurements.m',
+      'vit.body-measurements.m',
+      'vst.body-measurements.m',
+    ].includes(jpath),
 });
 
 const builder = new XMLBuilder({
@@ -33,7 +38,10 @@ const builder = new XMLBuilder({
   suppressEmptyNode: true,
 });
 
-export function parseSmis(xmlText: string, options: ParseSmisOptions = {}): SeamlyDocument {
+export function parseSmis(
+  xmlText: string,
+  options: ParseSmisOptions = {},
+): SeamlyDocument {
   let parsed: unknown;
   try {
     parsed = parser.parse(xmlText);
@@ -46,11 +54,16 @@ export function parseSmis(xmlText: string, options: ParseSmisOptions = {}): Seam
   const rootName = detectRootName(parsedRecord);
   const root = rootName ? asRecord(parsedRecord[rootName]) : {};
   if (!rootName || !isRecord(root)) {
-    throw new Error('Invalid measurement file: missing <smis>, <smms>, <vit>, or <vst> root');
+    throw new Error(
+      'Invalid measurement file: missing <smis>, <smms>, <vit>, or <vst> root',
+    );
   }
 
-  const fileInfo = options.filename ? detectMeasurementFile(options.filename) : null;
-  const type = options.type ?? fileInfo?.type ?? inferMeasurementType(rootName, root);
+  const fileInfo = options.filename
+    ? detectMeasurementFile(options.filename)
+    : null;
+  const type =
+    options.type ?? fileInfo?.type ?? inferMeasurementType(rootName, root);
   const body = asRecord(root['body-measurements']);
   const rawMeasurements = toArray(body.m);
   const measurements: Record<string, SeamlyMeasurement> = {};
@@ -73,8 +86,12 @@ export function parseSmis(xmlText: string, options: ParseSmisOptions = {}): Seam
         name,
         id: seamly?.id ?? (/^[A-Z]\d+$/.test(name) ? name : ''),
         base: readNumberAttr(rawMeasurement, 'base'),
-        sizeIncrement: readNumberAttr(rawMeasurement, 'size_increase') ?? readNumberAttr(rawMeasurement, 'size-increment'),
-        heightIncrement: readNumberAttr(rawMeasurement, 'height_increase') ?? readNumberAttr(rawMeasurement, 'height-increment'),
+        sizeIncrement:
+          readNumberAttr(rawMeasurement, 'size_increase') ??
+          readNumberAttr(rawMeasurement, 'size-increment'),
+        heightIncrement:
+          readNumberAttr(rawMeasurement, 'height_increase') ??
+          readNumberAttr(rawMeasurement, 'height-increment'),
         fullName: fullName || seamly?.fullName || '',
         desc,
         hasValue: readAttr(rawMeasurement, 'base').trim() !== '',
@@ -118,65 +135,76 @@ export function parseSmis(xmlText: string, options: ParseSmisOptions = {}): Seam
 
   return {
     type,
-    format: fileInfo?.format ?? (rootName === 'vit' || rootName === 'vst' ? 'legacy' : 'modern'),
+    format:
+      fileInfo?.format ??
+      (rootName === 'vit' || rootName === 'vst' ? 'legacy' : 'modern'),
     version: readText(root.version),
     readOnly: readText(root['read-only']) === 'true',
     notes: readText(root.notes),
     unit: readText(root.unit),
-    pmSys: readText(root.pm_system) || readText(asRecord(root.personal).pm_system),
+    pmSys:
+      readText(root.pm_system) || readText(asRecord(root.personal).pm_system),
     personal: readPersonal(root.personal),
-    measurements: type === 'individual' ? resolveMeasurements(measurements) : {},
+    measurements:
+      type === 'individual' ? resolveMeasurements(measurements) : {},
     measurementOrder: type === 'individual' ? measurementOrder : [],
-    multisize: type === 'multisize'
-      ? {
-          baseSize: readNumber(root.size),
-          baseHeight: readNumber(root.height),
-        }
-      : null,
+    multisize:
+      type === 'multisize'
+        ? {
+            baseSize: readNumber(root.size),
+            baseHeight: readNumber(root.height),
+          }
+        : null,
     multisizeMeasurements,
-    multisizeMeasurementOrder: type === 'multisize' ? multisizeMeasurementOrder : [],
+    multisizeMeasurementOrder:
+      type === 'multisize' ? multisizeMeasurementOrder : [],
   };
 }
 
-export function serializeSmis(document: SeamlyDocument, options: SerializeSmisOptions = {}): string {
-  const bodyMeasurements = document.type === 'multisize'
-    ? orderMultisizeMeasurements(document).map((measurement) => {
-        const attrs: Record<string, string> = {
-          '@_name': measurement.name,
-          '@_base': formatNumber(measurement.base),
-          '@_size_increase': formatNumber(measurement.sizeIncrement),
-          '@_height_increase': formatNumber(measurement.heightIncrement),
-        };
-        if (measurement.fullName) attrs['@_full_name'] = measurement.fullName;
-        if (measurement.desc) attrs['@_description'] = measurement.desc;
-        return attrs;
-      })
-    : serializeIndividualMeasurements(document, options);
+export function serializeSmis(
+  document: SeamlyDocument,
+  options: SerializeSmisOptions = {},
+): string {
+  const bodyMeasurements =
+    document.type === 'multisize'
+      ? orderMultisizeMeasurements(document).map(measurement => {
+          const attrs: Record<string, string> = {
+            '@_name': measurement.name,
+            '@_base': formatNumber(measurement.base),
+            '@_size_increase': formatNumber(measurement.sizeIncrement),
+            '@_height_increase': formatNumber(measurement.heightIncrement),
+          };
+          if (measurement.fullName) attrs['@_full_name'] = measurement.fullName;
+          if (measurement.desc) attrs['@_description'] = measurement.desc;
+          return attrs;
+        })
+      : serializeIndividualMeasurements(document, options);
 
   const rootTag = document.type === 'multisize' ? 'smms' : 'smis';
-  const rootContent = document.type === 'multisize'
-    ? {
-        version: document.version,
-        unit: document.unit,
-        'read-only': String(document.readOnly),
-        notes: document.notes,
-        size: formatNumber(document.multisize?.baseSize ?? null),
-        height: formatNumber(document.multisize?.baseHeight ?? null),
-        'body-measurements': {
-          m: bodyMeasurements,
-        },
-      }
-    : {
-        version: document.version,
-        'read-only': String(document.readOnly),
-        notes: document.notes,
-        unit: document.unit,
-        pm_system: document.pmSys,
-        personal: document.personal,
-        'body-measurements': {
-          m: bodyMeasurements,
-        },
-      };
+  const rootContent =
+    document.type === 'multisize'
+      ? {
+          version: document.version,
+          unit: document.unit,
+          'read-only': String(document.readOnly),
+          notes: document.notes,
+          size: formatNumber(document.multisize?.baseSize ?? null),
+          height: formatNumber(document.multisize?.baseHeight ?? null),
+          'body-measurements': {
+            m: bodyMeasurements,
+          },
+        }
+      : {
+          version: document.version,
+          'read-only': String(document.readOnly),
+          notes: document.notes,
+          unit: document.unit,
+          pm_system: document.pmSys,
+          personal: document.personal,
+          'body-measurements': {
+            m: bodyMeasurements,
+          },
+        };
 
   return `<?xml version="1.0" encoding="UTF-8"?>\n${builder.build({
     [rootTag]: rootContent,
@@ -189,19 +217,43 @@ export function detectMeasurementFile(filename: string): MeasurementFileInfo {
 
   switch (extension) {
     case '.smis':
-      return { extension, type: 'individual', format: 'modern', modernExtension: '.smis' };
+      return {
+        extension,
+        type: 'individual',
+        format: 'modern',
+        modernExtension: '.smis',
+      };
     case '.vit':
-      return { extension, type: 'individual', format: 'legacy', modernExtension: '.smis' };
+      return {
+        extension,
+        type: 'individual',
+        format: 'legacy',
+        modernExtension: '.smis',
+      };
     case '.smms':
-      return { extension, type: 'multisize', format: 'modern', modernExtension: '.smms' };
+      return {
+        extension,
+        type: 'multisize',
+        format: 'modern',
+        modernExtension: '.smms',
+      };
     case '.vst':
-      return { extension, type: 'multisize', format: 'legacy', modernExtension: '.smms' };
+      return {
+        extension,
+        type: 'multisize',
+        format: 'legacy',
+        modernExtension: '.smms',
+      };
     default:
-      throw new Error(`Unsupported measurement file extension: ${extension || '(none)'}`);
+      throw new Error(
+        `Unsupported measurement file extension: ${extension || '(none)'}`,
+      );
   }
 }
 
-export function modernExtensionForType(type: MeasurementFileType): '.smis' | '.smms' {
+export function modernExtensionForType(
+  type: MeasurementFileType,
+): '.smis' | '.smms' {
   return type === 'individual' ? '.smis' : '.smms';
 }
 
@@ -217,20 +269,31 @@ export function calculateMultisizeValue(
 
   const sizeDelta = size - (document.multisize.baseSize ?? size);
   const heightDelta = height - (document.multisize.baseHeight ?? height);
-  return measurement.base +
+  return (
+    measurement.base +
     sizeDelta * (measurement.sizeIncrement ?? 0) +
-    heightDelta * (measurement.heightIncrement ?? 0);
+    heightDelta * (measurement.heightIncrement ?? 0)
+  );
 }
 
-function serializeIndividualMeasurements(document: SeamlyDocument, options: SerializeSmisOptions): Record<string, string>[] {
+function serializeIndividualMeasurements(
+  document: SeamlyDocument,
+  options: SerializeSmisOptions,
+): Record<string, string>[] {
   const measurements = orderMeasurements(document)
-    .filter((measurement) => options.includeMissingCatalogMeasurements || measurement.hasValue)
-    .map((measurement) => {
+    .filter(
+      measurement =>
+        options.includeMissingCatalogMeasurements || measurement.hasValue,
+    )
+    .map(measurement => {
       const attrs: Record<string, string> = {
         '@_name': measurement.name,
         '@_value': measurement.raw,
       };
-      if (measurement.fullName && measurement.fullName !== SEAMLY_BY_VAR[measurement.name]?.fullName) {
+      if (
+        measurement.fullName &&
+        measurement.fullName !== SEAMLY_BY_VAR[measurement.name]?.fullName
+      ) {
         attrs['@_full_name'] = measurement.fullName;
       }
       if (measurement.desc) attrs['@_description'] = measurement.desc;
@@ -240,17 +303,23 @@ function serializeIndividualMeasurements(document: SeamlyDocument, options: Seri
 }
 
 function orderMeasurements(document: SeamlyDocument): SeamlyMeasurement[] {
-  return orderNames(document.measurementOrder, document.measurements).map((name) => document.measurements[name]);
+  return orderNames(document.measurementOrder, document.measurements).map(
+    name => document.measurements[name],
+  );
 }
 
-function orderMultisizeMeasurements(document: SeamlyDocument): SeamlyMultisizeMeasurement[] {
-  return orderNames(document.multisizeMeasurementOrder, document.multisizeMeasurements)
-    .map((name) => document.multisizeMeasurements[name]);
+function orderMultisizeMeasurements(
+  document: SeamlyDocument,
+): SeamlyMultisizeMeasurement[] {
+  return orderNames(
+    document.multisizeMeasurementOrder,
+    document.multisizeMeasurements,
+  ).map(name => document.multisizeMeasurements[name]);
 }
 
 function orderNames<T>(order: string[], items: Record<string, T>): string[] {
   const seen = new Set<string>();
-  const ordered = order.filter((name) => {
+  const ordered = order.filter(name => {
     if (!(name in items) || seen.has(name)) return false;
     seen.add(name);
     return true;
@@ -278,7 +347,10 @@ function readAttr(value: Record<string, unknown>, key: string): string {
   return decodeXmlAttribute(readText(value[`@_${key}`]));
 }
 
-function readNumberAttr(value: Record<string, unknown>, key: string): number | null {
+function readNumberAttr(
+  value: Record<string, unknown>,
+  key: string,
+): number | null {
   return readNumber(readAttr(value, key));
 }
 
@@ -312,26 +384,38 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function detectRootName(parsed: Record<string, unknown>): 'smis' | 'smms' | 'vit' | 'vst' | null {
+function detectRootName(
+  parsed: Record<string, unknown>,
+): 'smis' | 'smms' | 'vit' | 'vst' | null {
   for (const name of ['smis', 'smms', 'vit', 'vst'] as const) {
     if (isRecord(parsed[name])) return name;
   }
   return null;
 }
 
-function inferMeasurementType(rootName: string, root: Record<string, unknown>): MeasurementFileType {
+function inferMeasurementType(
+  rootName: string,
+  root: Record<string, unknown>,
+): MeasurementFileType {
   if (rootName === 'smms' || rootName === 'vst') return 'multisize';
   if ('size' in root || 'height' in root) return 'multisize';
   const first = toArray(asRecord(root['body-measurements']).m).find(isRecord);
-  return first && ('@_base' in first || '@_size_increase' in first || '@_height_increase' in first)
+  return first &&
+    ('@_base' in first ||
+      '@_size_increase' in first ||
+      '@_height_increase' in first)
     ? 'multisize'
     : 'individual';
 }
 
 function decodeXmlAttribute(value: string): string {
   return value
-    .replace(/&#(\d+);/g, (_match, code: string) => String.fromCodePoint(Number(code)))
-    .replace(/&#x([0-9a-f]+);/gi, (_match, code: string) => String.fromCodePoint(Number.parseInt(code, 16)))
+    .replace(/&#(\d+);/g, (_match, code: string) =>
+      String.fromCodePoint(Number(code)),
+    )
+    .replace(/&#x([0-9a-f]+);/gi, (_match, code: string) =>
+      String.fromCodePoint(Number.parseInt(code, 16)),
+    )
     .replace(/&quot;/g, '"')
     .replace(/&apos;/g, "'")
     .replace(/&lt;/g, '<')

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { readFileSync } from 'node:fs';
-import { basename } from 'node:path';
+import {readFileSync} from 'node:fs';
+import {basename} from 'node:path';
 import {
   calculateMultisizeValue,
   detectMeasurementFile,
@@ -26,7 +26,12 @@ function main(): void {
   try {
     const options = parseArgs(process.argv.slice(2));
 
-    if (!options.command || options.command === 'help' || options.command === '--help' || options.command === '-h') {
+    if (
+      !options.command ||
+      options.command === 'help' ||
+      options.command === '--help' ||
+      options.command === '-h'
+    ) {
       printHelp();
       process.exit(options.command ? 0 : 1);
     }
@@ -53,7 +58,9 @@ function main(): void {
 
     process.exit(report.ok ? 0 : 2);
   } catch (error) {
-    console.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(
+      `Error: ${error instanceof Error ? error.message : String(error)}`,
+    );
     process.exit(1);
   }
 }
@@ -106,25 +113,39 @@ function readNumberFlag(args: string[], index: number, flag: string): number {
   const raw = args[index];
   if (raw === undefined) throw new Error(`Missing value for ${flag}`);
   const value = Number(raw);
-  if (!Number.isFinite(value)) throw new Error(`Invalid number for ${flag}: ${raw}`);
+  if (!Number.isFinite(value))
+    throw new Error(`Invalid number for ${flag}: ${raw}`);
   return value;
 }
 
 function buildReport(doc: SeamlyDocument, file: string, options: CliOptions) {
   const fileInfo = detectMeasurementFile(file);
   const validationErrors = validateResolvedMeasurements(doc.measurements);
-  const measurements = doc.type === 'individual'
-    ? doc.measurementOrder.map((name) => doc.measurements[name]).filter((measurement) => measurement !== undefined)
-    : doc.multisizeMeasurementOrder.map((name) => doc.multisizeMeasurements[name]).filter((measurement) => measurement !== undefined);
-  const present = measurements.filter((measurement) => measurement.hasValue).length;
+  const measurements =
+    doc.type === 'individual'
+      ? doc.measurementOrder
+          .map(name => doc.measurements[name])
+          .filter(measurement => measurement !== undefined)
+      : doc.multisizeMeasurementOrder
+          .map(name => doc.multisizeMeasurements[name])
+          .filter(measurement => measurement !== undefined);
+  const present = measurements.filter(
+    measurement => measurement.hasValue,
+  ).length;
 
-  const graded = doc.type === 'multisize' && options.size !== null && options.height !== null
-    ? Object.values(doc.multisizeMeasurements).map((measurement) => ({
-        name: measurement.name,
-        fullName: measurement.fullName,
-        value: calculateMultisizeValue(doc, measurement.name, options.size as number, options.height as number),
-      }))
-    : [];
+  const graded =
+    doc.type === 'multisize' && options.size !== null && options.height !== null
+      ? Object.values(doc.multisizeMeasurements).map(measurement => ({
+          name: measurement.name,
+          fullName: measurement.fullName,
+          value: calculateMultisizeValue(
+            doc,
+            measurement.name,
+            options.size as number,
+            options.height as number,
+          ),
+        }))
+      : [];
 
   return {
     ok: validationErrors.length === 0,
@@ -138,14 +159,20 @@ function buildReport(doc: SeamlyDocument, file: string, options: CliOptions) {
     unit: doc.unit,
     readOnly: doc.readOnly,
     pmSystem: doc.pmSys,
-    subject: [doc.personal['given-name'], doc.personal['family-name']].filter(Boolean).join(' '),
+    subject: [doc.personal['given-name'], doc.personal['family-name']]
+      .filter(Boolean)
+      .join(' '),
     counts: {
       total: measurements.length,
       present,
       missing: measurements.length - present,
-      resolved: doc.type === 'individual'
-        ? Object.values(doc.measurements).filter((measurement) => measurement.hasValue && measurement.resolved !== null).length
-        : undefined,
+      resolved:
+        doc.type === 'individual'
+          ? Object.values(doc.measurements).filter(
+              measurement =>
+                measurement.hasValue && measurement.resolved !== null,
+            ).length
+          : undefined,
       errors: validationErrors.length,
     },
     validationErrors,
@@ -154,15 +181,23 @@ function buildReport(doc: SeamlyDocument, file: string, options: CliOptions) {
   };
 }
 
-function printReport(report: ReturnType<typeof buildReport>, options: CliOptions): void {
+function printReport(
+  report: ReturnType<typeof buildReport>,
+  options: CliOptions,
+): void {
   console.log(`${report.ok ? 'OK' : 'INVALID'} ${report.filename}`);
-  console.log(`Type: ${report.type} (${report.format}), save as *${report.modernExtension}`);
+  console.log(
+    `Type: ${report.type} (${report.format}), save as *${report.modernExtension}`,
+  );
   console.log(`Version: ${report.version || '(missing)'}`);
   console.log(`Unit: ${report.unit || '(missing)'}`);
   if (report.subject) console.log(`Subject: ${report.subject}`);
   if (report.pmSystem) console.log(`PM system: ${report.pmSystem}`);
-  console.log(`Measurements: ${report.counts.present}/${report.counts.total} present`);
-  if (report.counts.resolved !== undefined) console.log(`Resolved: ${report.counts.resolved}`);
+  console.log(
+    `Measurements: ${report.counts.present}/${report.counts.total} present`,
+  );
+  if (report.counts.resolved !== undefined)
+    console.log(`Resolved: ${report.counts.resolved}`);
   console.log(`Errors: ${report.counts.errors}`);
 
   if (report.validationErrors.length > 0) {
@@ -173,14 +208,24 @@ function printReport(report: ReturnType<typeof buildReport>, options: CliOptions
 
   if (options.list) {
     console.log('');
-    console.log(report.type === 'individual' ? 'Measurements:' : 'Multisize measurements:');
+    console.log(
+      report.type === 'individual'
+        ? 'Measurements:'
+        : 'Multisize measurements:',
+    );
     for (const measurement of report.measurements) {
-      if (options.errorsOnly && !('error' in measurement && measurement.error)) continue;
+      if (options.errorsOnly && !('error' in measurement && measurement.error))
+        continue;
       const id = measurement.id ? `[${measurement.id}] ` : '';
       if ('resolved' in measurement) {
-        const value = measurement.resolved === null ? '-' : `${formatNumber(measurement.resolved)} ${report.unit}`.trim();
+        const value =
+          measurement.resolved === null
+            ? '-'
+            : `${formatNumber(measurement.resolved)} ${report.unit}`.trim();
         const suffix = measurement.error ? ` ERROR: ${measurement.error}` : '';
-        console.log(`  ${id}${measurement.name}: ${value} raw="${measurement.raw}"${suffix}`);
+        console.log(
+          `  ${id}${measurement.name}: ${value} raw="${measurement.raw}"${suffix}`,
+        );
       } else {
         console.log(
           `  ${id}${measurement.name}: base=${formatMaybeNumber(measurement.base)} size_increase=${formatMaybeNumber(measurement.sizeIncrement)} height_increase=${formatMaybeNumber(measurement.heightIncrement)}`,
@@ -191,9 +236,13 @@ function printReport(report: ReturnType<typeof buildReport>, options: CliOptions
 
   if (report.graded.length > 0) {
     console.log('');
-    console.log(`Graded values at size=${options.size}, height=${options.height}:`);
+    console.log(
+      `Graded values at size=${options.size}, height=${options.height}:`,
+    );
     for (const item of report.graded) {
-      console.log(`  ${item.name}: ${formatMaybeNumber(item.value)} ${report.unit}`.trim());
+      console.log(
+        `  ${item.name}: ${formatMaybeNumber(item.value)} ${report.unit}`.trim(),
+      );
     }
   }
 }

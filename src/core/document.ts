@@ -1,63 +1,34 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { basename } from 'node:path';
-import { lookupSeamlyMeasurement, SEAMLY_BY_ID, SEAMLY_BY_VAR } from './catalog.js';
-import { buildDependencyGraph, resolveMeasurements } from './expressions.js';
-import { detectMeasurementFile, modernExtensionForType, parseSmis, serializeSmis } from './smis.js';
+import {
+  lookupSeamlyMeasurement,
+  SEAMLY_BY_ID,
+  SEAMLY_BY_VAR,
+} from './catalog.js';
+import {buildDependencyGraph, resolveMeasurements} from './expressions.js';
 import type {
-  LoadedMeasurementFile,
-  MeasurementFileType,
-  MeasurementFileWarning,
+  DocumentPatch,
   MeasurementMetaPatch,
-  SavedMeasurementFile,
-  SaveMeasurementFileOptions,
+  MeasurementMoveDirection,
+  NameConflictResolution,
   SeamlyDocument,
   SeamlyMeasurement,
   SeamlyMultisizeMeasurement,
   ValidationIssue,
 } from './types.js';
 
-export function loadMeasurementFile(input: string, filename?: string): LoadedMeasurementFile {
-  const xml = looksLikeXml(input) || !existsSync(input) ? input : readFileSync(input, 'utf8');
-  const effectiveFilename = filename ?? (looksLikeXml(input) ? undefined : input);
-  const warnings = detectFileWarnings(xml, effectiveFilename);
-  const root = detectMeasurementRoot(xml);
-  const doc = parseSmis(xml, {
-    filename: effectiveFilename,
-    type: root?.type,
-  });
-
-  if (root) {
-    doc.type = root.type;
-    doc.format = root.format;
-  }
-
-  return { document: doc, warnings };
-}
-
-export function saveMeasurementFile(
-  doc: SeamlyDocument,
-  options: SaveMeasurementFileOptions = {},
-): SavedMeasurementFile {
-  const xml = serializeSmis(doc, options);
-  const warnings = options.path && !options.path.toLowerCase().endsWith(modernExtensionForType(doc.type))
-    ? [{
-        code: 'save-extension-mismatch',
-        message: `Modern ${doc.type} measurements should be saved as *${modernExtensionForType(doc.type)}.`,
-      }]
-    : [];
-
-  if (options.path) writeFileSync(options.path, xml, 'utf8');
-  return { xml, warnings };
-}
-
 export function getMeasurement(
   doc: SeamlyDocument,
   name: string,
 ): SeamlyMeasurement | SeamlyMultisizeMeasurement | undefined {
-  return doc.type === 'multisize' ? doc.multisizeMeasurements[name] : doc.measurements[name];
+  return doc.type === 'multisize'
+    ? doc.multisizeMeasurements[name]
+    : doc.measurements[name];
 }
 
-export function setMeasurementValue(doc: SeamlyDocument, name: string, formulaOrValue: string | number): SeamlyDocument {
+export function setMeasurementValue(
+  doc: SeamlyDocument,
+  name: string,
+  formulaOrValue: string | number,
+): SeamlyDocument {
   assertIndividual(doc, 'setMeasurementValue');
   const measurement = doc.measurements[name];
   if (!measurement) throw new Error(`Measurement not found: ${name}`);
@@ -67,7 +38,11 @@ export function setMeasurementValue(doc: SeamlyDocument, name: string, formulaOr
   return doc;
 }
 
-export function setMeasurementMeta(doc: SeamlyDocument, name: string, patch: MeasurementMetaPatch): SeamlyDocument {
+export function setMeasurementMeta(
+  doc: SeamlyDocument,
+  name: string,
+  patch: MeasurementMetaPatch,
+): SeamlyDocument {
   const measurement = getMeasurement(doc, name);
   if (!measurement) throw new Error(`Measurement not found: ${name}`);
   if (patch.fullName !== undefined) measurement.fullName = patch.fullName;
@@ -75,9 +50,14 @@ export function setMeasurementMeta(doc: SeamlyDocument, name: string, patch: Mea
   return doc;
 }
 
-export function addMeasurement(doc: SeamlyDocument, name: string, formula = ''): SeamlyDocument {
+export function addMeasurement(
+  doc: SeamlyDocument,
+  name: string,
+  formula = '',
+): SeamlyDocument {
   assertIndividual(doc, 'addMeasurement');
-  if (doc.measurements[name]) throw new Error(`Measurement already exists: ${name}`);
+  if (doc.measurements[name])
+    throw new Error(`Measurement already exists: ${name}`);
   const seamly = lookupSeamlyMeasurement(name);
   doc.measurements[name] = {
     name,
@@ -95,26 +75,99 @@ export function addMeasurement(doc: SeamlyDocument, name: string, formula = ''):
   return doc;
 }
 
-export function removeMeasurement(doc: SeamlyDocument, name: string): SeamlyDocument {
+export function addMeasurementAfter(
+  doc: SeamlyDocument,
+  afterName: string,
+  name: string,
+  formula = '',
+): SeamlyDocument {
+  assertIndividual(doc, 'addMeasurementAfter');
+  if (!doc.measurements[afterName])
+    throw new Error(`Measurement not found: ${afterName}`);
+  addMeasurement(doc, name, formula);
+  moveMeasurement(doc, name, doc.measurementOrder.indexOf(afterName) + 1);
+  return doc;
+}
+
+export function removeMeasurement(
+  doc: SeamlyDocument,
+  name: string,
+): SeamlyDocument {
   if (doc.type === 'multisize') {
-    if (!doc.multisizeMeasurements[name]) throw new Error(`Measurement not found: ${name}`);
+    if (!doc.multisizeMeasurements[name])
+      throw new Error(`Measurement not found: ${name}`);
     delete doc.multisizeMeasurements[name];
-    doc.multisizeMeasurementOrder = doc.multisizeMeasurementOrder.filter((item) => item !== name);
+    doc.multisizeMeasurementOrder = doc.multisizeMeasurementOrder.filter(
+      item => item !== name,
+    );
     return doc;
   }
 
-  if (!doc.measurements[name]) throw new Error(`Measurement not found: ${name}`);
+  if (!doc.measurements[name])
+    throw new Error(`Measurement not found: ${name}`);
   delete doc.measurements[name];
-  doc.measurementOrder = doc.measurementOrder.filter((item) => item !== name);
+  doc.measurementOrder = doc.measurementOrder.filter(item => item !== name);
   resolveAll(doc);
   return doc;
 }
 
-export function renameMeasurement(doc: SeamlyDocument, oldName: string, newName: string): SeamlyDocument {
+export function moveMeasurement(
+  doc: SeamlyDocument,
+  name: string,
+  target: MeasurementMoveDirection | number,
+): SeamlyDocument {
+  const order = getOrder(doc);
+  const index = order.indexOf(name);
+  if (index === -1) throw new Error(`Measurement not found: ${name}`);
+
+  const targetIndex =
+    typeof target === 'number'
+      ? target
+      : target === 'top'
+        ? 0
+        : target === 'bottom'
+          ? order.length - 1
+          : target === 'up'
+            ? index - 1
+            : index + 1;
+
+  moveMeasurements(doc, [name], targetIndex);
+  return doc;
+}
+
+export function moveMeasurements(
+  doc: SeamlyDocument,
+  names: string[],
+  targetIndex: number,
+): SeamlyDocument {
+  const order = getOrder(doc);
+  const uniqueNames = [...new Set(names)];
+  for (const name of uniqueNames) {
+    if (!order.includes(name))
+      throw new Error(`Measurement not found: ${name}`);
+  }
+
+  const selected = order.filter(name => uniqueNames.includes(name));
+  const remaining = order.filter(name => !uniqueNames.includes(name));
+  const index = clamp(targetIndex, 0, remaining.length);
+  setOrder(doc, [
+    ...remaining.slice(0, index),
+    ...selected,
+    ...remaining.slice(index),
+  ]);
+  return doc;
+}
+
+export function renameMeasurement(
+  doc: SeamlyDocument,
+  oldName: string,
+  newName: string,
+): SeamlyDocument {
   assertIndividual(doc, 'renameMeasurement');
   const measurement = doc.measurements[oldName];
   if (!measurement) throw new Error(`Measurement not found: ${oldName}`);
-  if (doc.measurements[newName]) throw new Error(`Measurement already exists: ${newName}`);
+  if (doc.measurements[newName])
+    throw new Error(`Measurement already exists: ${newName}`);
 
   const seamly = lookupSeamlyMeasurement(newName);
   delete doc.measurements[oldName];
@@ -122,7 +175,9 @@ export function renameMeasurement(doc: SeamlyDocument, oldName: string, newName:
   measurement.id = seamly?.id ?? (/^[A-Z]\d+$/.test(newName) ? newName : '');
   measurement.fullName = seamly?.fullName ?? measurement.fullName;
   doc.measurements[newName] = measurement;
-  doc.measurementOrder = doc.measurementOrder.map((name) => (name === oldName ? newName : name));
+  doc.measurementOrder = doc.measurementOrder.map(name =>
+    name === oldName ? newName : name,
+  );
 
   for (const item of Object.values(doc.measurements)) {
     item.raw = replaceMeasurementReference(item.raw, oldName, newName);
@@ -132,24 +187,118 @@ export function renameMeasurement(doc: SeamlyDocument, oldName: string, newName:
   return doc;
 }
 
-export function listAll(doc: SeamlyDocument): Array<SeamlyMeasurement | SeamlyMultisizeMeasurement> {
+export function cloneDocument(doc: SeamlyDocument): SeamlyDocument {
+  return {
+    ...doc,
+    personal: {...doc.personal},
+    measurements: Object.fromEntries(
+      Object.entries(doc.measurements).map(([name, measurement]) => [
+        name,
+        {
+          ...measurement,
+          dependencies: [...measurement.dependencies],
+        },
+      ]),
+    ),
+    measurementOrder: [...doc.measurementOrder],
+    multisize: doc.multisize ? {...doc.multisize} : null,
+    multisizeMeasurements: Object.fromEntries(
+      Object.entries(doc.multisizeMeasurements).map(([name, measurement]) => [
+        name,
+        {...measurement},
+      ]),
+    ),
+    multisizeMeasurementOrder: [...doc.multisizeMeasurementOrder],
+  };
+}
+
+export function updateDocument(
+  doc: SeamlyDocument,
+  patch: DocumentPatch,
+): SeamlyDocument {
+  const next = cloneDocument(doc);
+  if (patch.version !== undefined) next.version = patch.version;
+  if (patch.readOnly !== undefined) next.readOnly = patch.readOnly;
+  if (patch.notes !== undefined) next.notes = patch.notes;
+  if (patch.unit !== undefined) next.unit = patch.unit;
+  if (patch.pmSys !== undefined) next.pmSys = patch.pmSys;
+  if (patch.personal) next.personal = {...next.personal, ...patch.personal};
+
+  if (patch.measurements) {
+    for (const [name, measurementPatch] of Object.entries(patch.measurements)) {
+      if (!next.measurements[name])
+        throw new Error(`Measurement not found: ${name}`);
+      if (measurementPatch.value !== undefined) {
+        next.measurements[name].raw = String(measurementPatch.value);
+        next.measurements[name].hasValue =
+          next.measurements[name].raw.trim() !== '';
+      }
+      if (measurementPatch.fullName !== undefined)
+        next.measurements[name].fullName = measurementPatch.fullName;
+      if (measurementPatch.description !== undefined)
+        next.measurements[name].desc = measurementPatch.description;
+    }
+  }
+
+  resolveAll(next);
+  return next;
+}
+
+export function resolveMeasurementNameConflict(
+  doc: SeamlyDocument,
+  requestedName: string,
+): NameConflictResolution {
+  const exists =
+    doc.type === 'multisize'
+      ? requestedName in doc.multisizeMeasurements
+      : requestedName in doc.measurements;
+  if (!exists)
+    return {requested: requestedName, resolved: requestedName, changed: false};
+
+  let index = 1;
+  let candidate = `${requestedName}_${index}`;
+  const items =
+    doc.type === 'multisize' ? doc.multisizeMeasurements : doc.measurements;
+  while (candidate in items) {
+    index += 1;
+    candidate = `${requestedName}_${index}`;
+  }
+
+  return {requested: requestedName, resolved: candidate, changed: true};
+}
+
+export function listAll(
+  doc: SeamlyDocument,
+): Array<SeamlyMeasurement | SeamlyMultisizeMeasurement> {
   return doc.type === 'multisize'
     ? ordered(doc.multisizeMeasurementOrder, doc.multisizeMeasurements)
     : ordered(doc.measurementOrder, doc.measurements);
 }
 
-export function listKnown(doc: SeamlyDocument): Array<SeamlyMeasurement | SeamlyMultisizeMeasurement> {
-  return listAll(doc).filter((measurement) => isKnownMeasurementName(measurement.name));
+export function listKnown(
+  doc: SeamlyDocument,
+): Array<SeamlyMeasurement | SeamlyMultisizeMeasurement> {
+  return listAll(doc).filter(measurement =>
+    isKnownMeasurementName(measurement.name),
+  );
 }
 
-export function listCustom(doc: SeamlyDocument): Array<SeamlyMeasurement | SeamlyMultisizeMeasurement> {
-  return listAll(doc).filter((measurement) => !isKnownMeasurementName(measurement.name));
+export function listCustom(
+  doc: SeamlyDocument,
+): Array<SeamlyMeasurement | SeamlyMultisizeMeasurement> {
+  return listAll(doc).filter(
+    measurement => !isKnownMeasurementName(measurement.name),
+  );
 }
 
 export function validateKnownNames(doc: SeamlyDocument): ValidationIssue[] {
   return listAll(doc)
-    .filter((measurement) => !isCustomMeasurementName(measurement.name) && !isKnownMeasurementName(measurement.name))
-    .map((measurement) => ({
+    .filter(
+      measurement =>
+        !isCustomMeasurementName(measurement.name) &&
+        !isKnownMeasurementName(measurement.name),
+    )
+    .map(measurement => ({
       severity: 'error',
       code: 'unknown-measurement-name',
       message: `Unknown standard measurement name: ${measurement.name}`,
@@ -160,9 +309,18 @@ export function validateKnownNames(doc: SeamlyDocument): ValidationIssue[] {
 export function validateDocument(doc: SeamlyDocument): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 
-  if (!doc.version) issues.push({ severity: 'warning', code: 'missing-version', message: 'Missing file format version.' });
+  if (!doc.version)
+    issues.push({
+      severity: 'warning',
+      code: 'missing-version',
+      message: 'Missing file format version.',
+    });
   if (!['cm', 'mm', 'inch'].includes(doc.unit)) {
-    issues.push({ severity: 'error', code: 'unsupported-unit', message: `Unsupported unit: ${doc.unit || '(missing)'}` });
+    issues.push({
+      severity: 'error',
+      code: 'unsupported-unit',
+      message: `Unsupported unit: ${doc.unit || '(missing)'}`,
+    });
   }
 
   issues.push(...validateKnownNames(doc));
@@ -230,52 +388,26 @@ export function resolveAll(doc: SeamlyDocument): SeamlyDocument {
   return doc;
 }
 
-function detectFileWarnings(xml: string, filename?: string): MeasurementFileWarning[] {
-  if (!filename) return [];
-  const root = detectMeasurementRoot(xml);
-  const warnings: MeasurementFileWarning[] = [];
-  if (!root) return warnings;
-
-  let fileInfo;
-  try {
-    fileInfo = detectMeasurementFile(filename);
-  } catch {
-    return warnings;
-  }
-
-  if (fileInfo.type !== root.type) {
-    warnings.push({
-      code: 'extension-root-type-mismatch',
-      message: `Extension ${fileInfo.extension} implies ${fileInfo.type}, but XML root <${root.name}> is ${root.type}.`,
-    });
-  }
-  if (fileInfo.format !== root.format) {
-    warnings.push({
-      code: 'extension-root-format-mismatch',
-      message: `Extension ${fileInfo.extension} implies ${fileInfo.format}, but XML root <${root.name}> is ${root.format}.`,
-    });
-  }
-
-  return warnings;
-}
-
-function detectMeasurementRoot(xml: string): { name: 'smis' | 'smms' | 'vit' | 'vst'; type: MeasurementFileType; format: 'modern' | 'legacy' } | null {
-  const match = xml.match(/<\s*(smis|smms|vit|vst)(?:\s|>)/i);
-  if (!match) return null;
-  const name = match[1].toLowerCase() as 'smis' | 'smms' | 'vit' | 'vst';
-  return {
-    name,
-    type: name === 'smms' || name === 'vst' ? 'multisize' : 'individual',
-    format: name === 'vit' || name === 'vst' ? 'legacy' : 'modern',
-  };
-}
-
 function assertIndividual(doc: SeamlyDocument, operation: string): void {
-  if (doc.type !== 'individual') throw new Error(`${operation} is only supported for individual measurements.`);
+  if (doc.type !== 'individual')
+    throw new Error(
+      `${operation} is only supported for individual measurements.`,
+    );
 }
 
-function looksLikeXml(input: string): boolean {
-  return input.trimStart().startsWith('<');
+function getOrder(doc: SeamlyDocument): string[] {
+  return doc.type === 'multisize'
+    ? doc.multisizeMeasurementOrder
+    : doc.measurementOrder;
+}
+
+function setOrder(doc: SeamlyDocument, order: string[]): void {
+  if (doc.type === 'multisize') doc.multisizeMeasurementOrder = order;
+  else doc.measurementOrder = order;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
 
 function isKnownMeasurementName(name: string): boolean {
@@ -301,15 +433,22 @@ function ordered<T>(order: string[], items: Record<string, T>): T[] {
   return result;
 }
 
-function replaceMeasurementReference(expr: string, oldName: string, newName: string): string {
+function replaceMeasurementReference(
+  expr: string,
+  oldName: string,
+  newName: string,
+): string {
   if (!expr.includes(oldName)) return expr;
   const escaped = oldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return expr.replace(new RegExp(`(?<![\\w@])${escaped}(?![\\w])`, 'g'), newName);
+  return expr.replace(
+    new RegExp(`(?<![\\w@])${escaped}(?![\\w])`, 'g'),
+    newName,
+  );
 }
 
 function dedupeCycles(cycles: string[][]): string[][] {
   const seen = new Set<string>();
-  return cycles.filter((cycle) => {
+  return cycles.filter(cycle => {
     const key = cycle.join('\0');
     if (seen.has(key)) return false;
     seen.add(key);
