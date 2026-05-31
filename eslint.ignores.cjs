@@ -1,4 +1,5 @@
 module.exports = [
+  'docs/',
   'build/',
   'dist/',
   'coverage/',
