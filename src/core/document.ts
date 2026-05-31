@@ -16,6 +16,20 @@ import type {
   ValidationIssue,
 } from './types.js';
 
+/**
+ * Retrieves a measurement by name from the document.
+ * Works for both individual and multisize documents.
+ *
+ * @param doc - The Seamly document.
+ * @param name - The variable name of the measurement.
+ * @returns The measurement object if found, otherwise undefined.
+ *
+ * @example
+ * ```typescript
+ * import { getMeasurement } from './document.js';
+ * const measurement = getMeasurement(myDoc, 'bust_circ');
+ * ```
+ */
 export function getMeasurement(
   doc: SeamlyDocument,
   name: string,
@@ -25,6 +39,21 @@ export function getMeasurement(
     : doc.measurements[name];
 }
 
+/**
+ * Sets the formula or value for a measurement in an individual document.
+ * Triggers a full resolution of all measurements.
+ *
+ * @param doc - The Seamly document.
+ * @param name - The name of the measurement to update.
+ * @param formulaOrValue - The new formula string or numeric value.
+ * @returns The updated document.
+ *
+ * @example
+ * ```typescript
+ * import { setMeasurementValue } from './document.js';
+ * setMeasurementValue(myDoc, 'bust_circ', '90 + 2');
+ * ```
+ */
 export function setMeasurementValue(
   doc: SeamlyDocument,
   name: string,
@@ -39,6 +68,20 @@ export function setMeasurementValue(
   return doc;
 }
 
+/**
+ * Updates the metadata (full name and description) of a measurement.
+ *
+ * @param doc - The Seamly document.
+ * @param name - The name of the measurement to update.
+ * @param patch - An object containing the new metadata values.
+ * @returns The updated document.
+ *
+ * @example
+ * ```typescript
+ * import { setMeasurementMeta } from './document.js';
+ * setMeasurementMeta(myDoc, 'bust_circ', { description: 'Updated notes' });
+ * ```
+ */
 export function setMeasurementMeta(
   doc: SeamlyDocument,
   name: string,
@@ -51,6 +94,20 @@ export function setMeasurementMeta(
   return doc;
 }
 
+/**
+ * Adds a new measurement to an individual document.
+ *
+ * @param doc - The Seamly document.
+ * @param name - The name for the new measurement.
+ * @param formula - The initial formula or value.
+ * @returns The updated document.
+ *
+ * @example
+ * ```typescript
+ * import { addMeasurement } from './document.js';
+ * addMeasurement(myDoc, '@my_custom', '10');
+ * ```
+ */
 export function addMeasurement(
   doc: SeamlyDocument,
   name: string,
@@ -76,6 +133,21 @@ export function addMeasurement(
   return doc;
 }
 
+/**
+ * Adds a new measurement after a specific existing measurement.
+ *
+ * @param doc - The Seamly document.
+ * @param afterName - The name of the measurement to insert after.
+ * @param name - The name for the new measurement.
+ * @param formula - The initial formula or value.
+ * @returns The updated document.
+ *
+ * @example
+ * ```typescript
+ * import { addMeasurementAfter } from './document.js';
+ * addMeasurementAfter(myDoc, 'bust_circ', '@bust_ease', '2');
+ * ```
+ */
 export function addMeasurementAfter(
   doc: SeamlyDocument,
   afterName: string,
@@ -90,6 +162,19 @@ export function addMeasurementAfter(
   return doc;
 }
 
+/**
+ * Removes a measurement from the document.
+ *
+ * @param doc - The Seamly document.
+ * @param name - The name of the measurement to remove.
+ * @returns The updated document.
+ *
+ * @example
+ * ```typescript
+ * import { removeMeasurement } from './document.js';
+ * removeMeasurement(myDoc, '@unneeded');
+ * ```
+ */
 export function removeMeasurement(
   doc: SeamlyDocument,
   name: string,
@@ -112,6 +197,20 @@ export function removeMeasurement(
   return doc;
 }
 
+/**
+ * Moves a measurement to a new position in the list.
+ *
+ * @param doc - The Seamly document.
+ * @param name - The name of the measurement to move.
+ * @param target - The destination: a specific index or a direction ('top', 'up', 'down', 'bottom').
+ * @returns The updated document.
+ *
+ * @example
+ * ```typescript
+ * import { moveMeasurement } from './document.js';
+ * moveMeasurement(myDoc, 'bust_circ', 'top');
+ * ```
+ */
 export function moveMeasurement(
   doc: SeamlyDocument,
   name: string,
@@ -136,6 +235,20 @@ export function moveMeasurement(
   return doc;
 }
 
+/**
+ * Moves multiple measurements to a new position.
+ *
+ * @param doc - The Seamly document.
+ * @param names - The names of the measurements to move.
+ * @param targetIndex - The index where the measurements should be inserted.
+ * @returns The updated document.
+ *
+ * @example
+ * ```typescript
+ * import { moveMeasurements } from './document.js';
+ * moveMeasurements(myDoc, ['bust_circ', 'waist_circ'], 0);
+ * ```
+ */
 export function moveMeasurements(
   doc: SeamlyDocument,
   names: string[],
@@ -161,6 +274,20 @@ export function moveMeasurements(
   return doc;
 }
 
+/**
+ * Renames a measurement and updates all formulas that reference it.
+ *
+ * @param doc - The Seamly document.
+ * @param oldName - The current name of the measurement.
+ * @param newName - The new name.
+ * @returns The updated document.
+ *
+ * @example
+ * ```typescript
+ * import { renameMeasurement } from './document.js';
+ * renameMeasurement(myDoc, '@old_name', '@new_name');
+ * ```
+ */
 export function renameMeasurement(
   doc: SeamlyDocument,
   oldName: string,
@@ -190,6 +317,18 @@ export function renameMeasurement(
   return doc;
 }
 
+/**
+ * Creates a deep copy of the Seamly document.
+ *
+ * @param doc - The document to clone.
+ * @returns A new Seamly document instance.
+ *
+ * @example
+ * ```typescript
+ * import { cloneDocument } from './document.js';
+ * const copy = cloneDocument(myDoc);
+ * ```
+ */
 export function cloneDocument(doc: SeamlyDocument): SeamlyDocument {
   return {
     ...doc,
@@ -215,6 +354,20 @@ export function cloneDocument(doc: SeamlyDocument): SeamlyDocument {
   };
 }
 
+/**
+ * Applies multiple updates to a document using a patch object.
+ * Creates a clone of the document before applying changes.
+ *
+ * @param doc - The document to update.
+ * @param patch - The updates to apply.
+ * @returns A new Seamly document with the updates applied.
+ *
+ * @example
+ * ```typescript
+ * import { updateDocument } from './document.js';
+ * const updated = updateDocument(myDoc, { notes: 'New notes' });
+ * ```
+ */
 export function updateDocument(
   doc: SeamlyDocument,
   patch: DocumentPatch,
@@ -247,6 +400,19 @@ export function updateDocument(
   return next;
 }
 
+/**
+ * Resolves a potential measurement name conflict by appending a suffix if needed.
+ *
+ * @param doc - The Seamly document.
+ * @param requestedName - The name that is desired.
+ * @returns An object containing the resolved name and whether it was changed.
+ *
+ * @example
+ * ```typescript
+ * import { resolveMeasurementNameConflict } from './document.js';
+ * const res = resolveMeasurementNameConflict(myDoc, 'bust_circ');
+ * ```
+ */
 export function resolveMeasurementNameConflict(
   doc: SeamlyDocument,
   requestedName: string,
@@ -270,6 +436,18 @@ export function resolveMeasurementNameConflict(
   return {requested: requestedName, resolved: candidate, changed: true};
 }
 
+/**
+ * Lists all measurements in the document in their defined order.
+ *
+ * @param doc - The Seamly document.
+ * @returns An array of measurement objects.
+ *
+ * @example
+ * ```typescript
+ * import { listAll } from './document.js';
+ * const all = listAll(myDoc);
+ * ```
+ */
 export function listAll(
   doc: SeamlyDocument,
 ): Array<SeamlyMeasurement | SeamlyMultisizeMeasurement> {
@@ -278,6 +456,18 @@ export function listAll(
     : ordered(doc.measurementOrder, doc.measurements);
 }
 
+/**
+ * Lists all standard (known) measurements in the document.
+ *
+ * @param doc - The Seamly document.
+ * @returns An array of standard measurement objects.
+ *
+ * @example
+ * ```typescript
+ * import { listKnown } from './document.js';
+ * const known = listKnown(myDoc);
+ * ```
+ */
 export function listKnown(
   doc: SeamlyDocument,
 ): Array<SeamlyMeasurement | SeamlyMultisizeMeasurement> {
@@ -286,6 +476,18 @@ export function listKnown(
   );
 }
 
+/**
+ * Lists all custom (user-defined) measurements in the document.
+ *
+ * @param doc - The Seamly document.
+ * @returns An array of custom measurement objects.
+ *
+ * @example
+ * ```typescript
+ * import { listCustom } from './document.js';
+ * const custom = listCustom(myDoc);
+ * ```
+ */
 export function listCustom(
   doc: SeamlyDocument,
 ): Array<SeamlyMeasurement | SeamlyMultisizeMeasurement> {
@@ -294,6 +496,19 @@ export function listCustom(
   );
 }
 
+/**
+ * Generates a flat list of measurement rows suitable for display in a table.
+ * Includes calculated values, dependency information, and error status.
+ *
+ * @param doc - The Seamly document.
+ * @returns An array of measurement rows.
+ *
+ * @example
+ * ```typescript
+ * import { getMeasurementRows } from './document.js';
+ * const rows = getMeasurementRows(myDoc);
+ * ```
+ */
 export function getMeasurementRows(doc: SeamlyDocument): MeasurementRow[] {
   if (doc.type === 'multisize') {
     return ordered(
@@ -348,6 +563,18 @@ export function getMeasurementRows(doc: SeamlyDocument): MeasurementRow[] {
   );
 }
 
+/**
+ * Validates that all non-custom measurements in the document use standard Seamly names.
+ *
+ * @param doc - The Seamly document.
+ * @returns An array of validation issues.
+ *
+ * @example
+ * ```typescript
+ * import { validateKnownNames } from './document.js';
+ * const issues = validateKnownNames(myDoc);
+ * ```
+ */
 export function validateKnownNames(doc: SeamlyDocument): ValidationIssue[] {
   return listAll(doc)
     .filter(
@@ -363,6 +590,19 @@ export function validateKnownNames(doc: SeamlyDocument): ValidationIssue[] {
     }));
 }
 
+/**
+ * Performs a comprehensive validation of the document.
+ * Checks for missing metadata, unsupported units, unknown names, circular dependencies, and formula errors.
+ *
+ * @param doc - The Seamly document.
+ * @returns An array of validation issues (errors and warnings).
+ *
+ * @example
+ * ```typescript
+ * import { validateDocument } from './document.js';
+ * const issues = validateDocument(myDoc);
+ * ```
+ */
 export function validateDocument(doc: SeamlyDocument): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 
@@ -406,6 +646,19 @@ export function validateDocument(doc: SeamlyDocument): ValidationIssue[] {
   return issues;
 }
 
+/**
+ * Finds all measurements that depend on the given measurement.
+ *
+ * @param doc - The Seamly document.
+ * @param name - The name of the measurement.
+ * @returns An array of measurement names that reference the given measurement.
+ *
+ * @example
+ * ```typescript
+ * import { findDependents } from './document.js';
+ * const dependents = findDependents(myDoc, 'bust_circ');
+ * ```
+ */
 export function findDependents(doc: SeamlyDocument, name: string): string[] {
   const graph = buildDependencyGraph(doc);
   return Object.entries(graph)
@@ -413,6 +666,18 @@ export function findDependents(doc: SeamlyDocument, name: string): string[] {
     .map(([dependent]) => dependent);
 }
 
+/**
+ * Detects any circular dependencies between measurements.
+ *
+ * @param doc - The Seamly document.
+ * @returns An array of cycles, where each cycle is an array of measurement names.
+ *
+ * @example
+ * ```typescript
+ * import { detectCycles } from './document.js';
+ * const cycles = detectCycles(myDoc);
+ * ```
+ */
 export function detectCycles(doc: SeamlyDocument): string[][] {
   if (doc.type !== 'individual') return [];
   const graph = buildDependencyGraph(doc);
@@ -438,6 +703,19 @@ export function detectCycles(doc: SeamlyDocument): string[][] {
   return dedupeCycles(cycles);
 }
 
+/**
+ * Resolves all individual measurements in a document by evaluating their formulas.
+ * Updates the `resolved`, `dependencies`, and `error` properties of each measurement.
+ *
+ * @param doc - The document to resolve.
+ * @returns The document with resolved measurements.
+ *
+ * @example
+ * ```typescript
+ * import { resolveAll } from './document.js';
+ * const resolvedDoc = resolveAll(myDoc);
+ * ```
+ */
 export function resolveAll(doc: SeamlyDocument): SeamlyDocument {
   if (doc.type === 'individual') {
     doc.measurements = resolveMeasurements(doc.measurements);

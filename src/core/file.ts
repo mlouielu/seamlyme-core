@@ -14,6 +14,20 @@ import type {
   SeamlyDocument,
 } from './types.js';
 
+/**
+ * Loads a measurement file from a file path or a raw XML string.
+ * Automatically detects the file type (individual or multisize) and format (modern or legacy).
+ *
+ * @param input - A file path on disk or a raw XML string.
+ * @param filename - Optional filename for better type inference if input is a raw XML string.
+ * @returns The parsed document and any encountered warnings.
+ *
+ * @example
+ * ```typescript
+ * import { loadMeasurementFile } from './file.js';
+ * const { document, warnings } = loadMeasurementFile('measurements.smis');
+ * ```
+ */
 export function loadMeasurementFile(
   input: string,
   filename?: string,
@@ -39,6 +53,19 @@ export function loadMeasurementFile(
   return {document: doc, warnings};
 }
 
+/**
+ * Serializes a Seamly document to XML and optionally saves it to disk.
+ *
+ * @param doc - The document to save.
+ * @param options - Saving options, including path and serialization settings.
+ * @returns The generated XML string and any encountered warnings.
+ *
+ * @example
+ * ```typescript
+ * import { saveMeasurementFile } from './file.js';
+ * const { xml } = saveMeasurementFile(myDoc, { path: 'output.smis' });
+ * ```
+ */
 export function saveMeasurementFile(
   doc: SeamlyDocument,
   options: SaveMeasurementFileOptions = {},

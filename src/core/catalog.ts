@@ -1,5 +1,14 @@
 import type {SeamlyMeasurementDefinition} from './types.js';
 
+/**
+ * Raw pipe-separated string containing the standard Seamly measurement catalog.
+ * Format: ID|InternalName|FullName
+ *
+ * @example
+ * ```typescript
+ * console.log(SEAMLY_MEASUREMENT_ROWS.split('\n')[0]);
+ * ```
+ */
 export const SEAMLY_MEASUREMENT_ROWS = `
 A01|height|Height: Total
 A02|height_neck_back|Height: Neck Back
@@ -247,6 +256,14 @@ Q02|dart_width_bust|Dart Width: Bust
 Q03|dart_width_waist|Dart Width: Waist
 `;
 
+/**
+ * An array of all standard measurement definitions parsed from the catalog.
+ *
+ * @example
+ * ```typescript
+ * const total = SEAMLY_MEASUREMENT_CATALOG.length;
+ * ```
+ */
 export const SEAMLY_MEASUREMENT_CATALOG: SeamlyMeasurementDefinition[] =
   SEAMLY_MEASUREMENT_ROWS.trim()
     .split('\n')
@@ -255,12 +272,40 @@ export const SEAMLY_MEASUREMENT_CATALOG: SeamlyMeasurementDefinition[] =
       return {id, name, fullName};
     });
 
+/**
+ * A dictionary of standard measurements indexed by their variable name.
+ *
+ * @example
+ * ```typescript
+ * const bust = SEAMLY_BY_VAR['bust_circ'];
+ * ```
+ */
 export const SEAMLY_BY_VAR: Record<string, SeamlyMeasurementDefinition> =
   Object.fromEntries(SEAMLY_MEASUREMENT_CATALOG.map(item => [item.name, item]));
 
+/**
+ * A dictionary of standard measurements indexed by their Seamly ID.
+ *
+ * @example
+ * ```typescript
+ * const g04 = SEAMLY_BY_ID['G04'];
+ * ```
+ */
 export const SEAMLY_BY_ID: Record<string, SeamlyMeasurementDefinition> =
   Object.fromEntries(SEAMLY_MEASUREMENT_CATALOG.map(item => [item.id, item]));
 
+/**
+ * Looks up a measurement definition in the catalog by its variable name or Seamly ID.
+ *
+ * @param name - The variable name or ID to look up.
+ * @returns The measurement definition if found, otherwise undefined.
+ *
+ * @example
+ * ```typescript
+ * import { lookupSeamlyMeasurement } from './catalog.js';
+ * const def = lookupSeamlyMeasurement('bust_circ');
+ * ```
+ */
 export function lookupSeamlyMeasurement(
   name: string,
 ): SeamlyMeasurementDefinition | undefined {

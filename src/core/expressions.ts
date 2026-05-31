@@ -18,6 +18,19 @@ const parser = new Parser({
   },
 });
 
+/**
+ * Extracts measurement names referenced in a formula string.
+ *
+ * @param expr - The formula expression to analyze.
+ * @param knownNames - A list of known measurement names to look for.
+ * @returns An array of measurement names found in the expression.
+ *
+ * @example
+ * ```typescript
+ * import { extractDependencies } from './expressions.js';
+ * const deps = extractDependencies('bust_circ + 2', ['bust_circ', 'waist_circ']);
+ * ```
+ */
 export function extractDependencies(
   expr: string,
   knownNames: Iterable<string>,
@@ -38,6 +51,18 @@ export function extractDependencies(
   return [...deps].sort();
 }
 
+/**
+ * Builds a dependency graph for a set of measurements.
+ *
+ * @param input - Either a Seamly document or a record of measurements.
+ * @returns A record where keys are measurement names and values are arrays of their dependencies.
+ *
+ * @example
+ * ```typescript
+ * import { buildDependencyGraph } from './expressions.js';
+ * const graph = buildDependencyGraph(myDoc);
+ * ```
+ */
 export function buildDependencyGraph(
   input: SeamlyDocument | Record<string, SeamlyMeasurement>,
 ): Record<string, string[]> {
@@ -57,6 +82,18 @@ function isDocument(
   return 'measurements' in input && 'measurementOrder' in input;
 }
 
+/**
+ * Validates a record of measurements and returns a list of error messages for those that failed to resolve.
+ *
+ * @param measurements - The measurements to validate.
+ * @returns An array of error strings.
+ *
+ * @example
+ * ```typescript
+ * import { validateResolvedMeasurements } from './expressions.js';
+ * const errors = validateResolvedMeasurements(myDoc.measurements);
+ * ```
+ */
 export function validateResolvedMeasurements(
   measurements: Record<string, SeamlyMeasurement>,
 ): string[] {
@@ -65,6 +102,19 @@ export function validateResolvedMeasurements(
     .map(measurement => `${measurement.name}: ${measurement.error}`);
 }
 
+/**
+ * Resolves a set of measurements by evaluating their formulas in dependency order.
+ * Handles circular dependency detection and caching of results.
+ *
+ * @param measurements - The record of measurements to resolve.
+ * @returns A new record with resolved values, updated dependencies, and error status.
+ *
+ * @example
+ * ```typescript
+ * import { resolveMeasurements } from './expressions.js';
+ * const resolved = resolveMeasurements(myDoc.measurements);
+ * ```
+ */
 export function resolveMeasurements(
   measurements: Record<string, SeamlyMeasurement>,
 ): Record<string, SeamlyMeasurement> {

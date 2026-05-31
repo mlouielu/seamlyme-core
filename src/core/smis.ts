@@ -38,6 +38,20 @@ const builder = new XMLBuilder({
   suppressEmptyNode: true,
 });
 
+/**
+ * Parses SeamlyMe XML measurement data.
+ * Supports .smis, .smms, .vit, and .vst formats.
+ *
+ * @param xmlText - The raw XML string to parse.
+ * @param options - Parsing options.
+ * @returns A structured SeamlyDocument.
+ *
+ * @example
+ * ```typescript
+ * import { parseSmis } from './smis.js';
+ * const doc = parseSmis(xmlString);
+ * ```
+ */
 export function parseSmis(
   xmlText: string,
   options: ParseSmisOptions = {},
@@ -161,6 +175,19 @@ export function parseSmis(
   };
 }
 
+/**
+ * Serializes a SeamlyDocument into a SeamlyMe XML string.
+ *
+ * @param document - The document to serialize.
+ * @param options - Serialization options.
+ * @returns A formatted XML string.
+ *
+ * @example
+ * ```typescript
+ * import { serializeSmis } from './smis.js';
+ * const xml = serializeSmis(myDoc);
+ * ```
+ */
 export function serializeSmis(
   document: SeamlyDocument,
   options: SerializeSmisOptions = {},
@@ -211,6 +238,18 @@ export function serializeSmis(
   })}\n`;
 }
 
+/**
+ * Detects the file type and format based on a filename's extension.
+ *
+ * @param filename - The filename to analyze.
+ * @returns Information about the measurement file.
+ *
+ * @example
+ * ```typescript
+ * import { detectMeasurementFile } from './smis.js';
+ * const info = detectMeasurementFile('standard.vit');
+ * ```
+ */
 export function detectMeasurementFile(filename: string): MeasurementFileInfo {
   const match = filename.toLowerCase().match(/(\.[^.]+)$/);
   const extension = match?.[1] ?? '';
@@ -251,12 +290,39 @@ export function detectMeasurementFile(filename: string): MeasurementFileInfo {
   }
 }
 
+/**
+ * Returns the recommended modern file extension for a given measurement file type.
+ *
+ * @param type - The type of measurements (individual or multisize).
+ * @returns '.smis' for individual or '.smms' for multisize.
+ *
+ * @example
+ * ```typescript
+ * import { modernExtensionForType } from './smis.js';
+ * const ext = modernExtensionForType('individual'); // '.smis'
+ * ```
+ */
 export function modernExtensionForType(
   type: MeasurementFileType,
 ): '.smis' | '.smms' {
   return type === 'individual' ? '.smis' : '.smms';
 }
 
+/**
+ * Calculates a specific measurement value for a given size and height using multisize increments.
+ *
+ * @param document - The multisize document containing base values and increments.
+ * @param name - The name of the measurement to calculate.
+ * @param size - The target size.
+ * @param height - The target height.
+ * @returns The calculated value, or null if the document is not multisize or measurement is missing.
+ *
+ * @example
+ * ```typescript
+ * import { calculateMultisizeValue } from './smis.js';
+ * const val = calculateMultisizeValue(multisizeDoc, 'bust_circ', 40, 170);
+ * ```
+ */
 export function calculateMultisizeValue(
   document: SeamlyDocument,
   name: string,
