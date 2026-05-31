@@ -21,8 +21,9 @@ import {
   modernExtensionForType,
   moveMeasurement,
   moveMeasurements,
-  parseSmis,
+  reorderByDependencies,
   removeMeasurement,
+  parseSmis,
   renameMeasurement,
   resolveMeasurementNameConflict,
   resolveAll,
@@ -466,6 +467,27 @@ describe('SeamlyME core', () => {
     addMeasurementAfter(doc, '@a', '@b', '@a + 1');
     expect(doc.measurementOrder).toEqual(['@a', '@b', '@c']);
     expect(doc.measurements['@b'].resolved).toBe(2);
+  });
+
+  it('reorders measurements by dependencies and priority', () => {
+    const doc = parseSmis(
+      '<smis><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements>' +
+        '<m name="@b" value="@a + 1"/>' + // Custom @b depends on @a
+        '<m name="@a" value="10"/>' + // Custom @a
+        '<m name="bust_circ" value="90"/>' + // Standard G04
+        '<m name="height" value="170"/>' + // Standard A01
+        '</body-measurements></smis>',
+      {includeCatalog: false},
+    );
+
+    reorderByDependencies(doc);
+
+    // Expected order:
+    // 1. height (A01) - Standard, ID A01
+    // 2. bust_circ (G04) - Standard, ID G04
+    // 3. @a - Custom, no deps
+    // 4. @b - Custom, depends on @a
+    expect(doc.measurementOrder).toEqual(['height', 'bust_circ', '@a', '@b']);
   });
 
   it('clones and immutably updates document metadata and measurements', () => {

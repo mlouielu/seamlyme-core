@@ -704,6 +704,88 @@ export function detectCycles(doc: SeamlyDocument): string[][] {
 }
 
 /**
+ * Reorders the measurements in the document using a topological sort based on their dependencies.
+ * Standard Seamly measurements are prioritized to appear first, followed by custom variables.
+ * Within each category, alphabetical order (for standard IDs) or original order is used as a tie-breaker.
+ *
+ * @param doc - The Seamly document.
+ * @returns The updated document with reordered measurementOrder.
+ *
+ * @example
+ * ```typescript
+ * import { reorderByDependencies } from './document.js';
+ * reorderByDependencies(myDoc);
+ * ```
+ */
+export function reorderByDependencies(doc: SeamlyDocument): SeamlyDocument {
+  if (doc.type !== 'individual') return doc;
+
+  const graph = buildDependencyGraph(doc);
+  const names = Object.keys(doc.measurements);
+
+  // dependency -> dependents
+  const dependents = new Map<string, string[]>();
+  const inDegree = new Map<string, number>();
+
+  for (const name of names) {
+    inDegree.set(name, 0);
+  }
+
+  for (const [name, deps] of Object.entries(graph)) {
+    inDegree.set(name, deps.length);
+    for (const dep of deps) {
+      if (!dependents.has(dep)) dependents.set(dep, []);
+      dependents.get(dep)!.push(name);
+    }
+  }
+
+  const ready = names.filter(name => (inDegree.get(name) ?? 0) === 0);
+  const result: string[] = [];
+
+  // Pre-calculate sort weights for efficiency and consistent priority
+  const weights = new Map<string, string>();
+  for (const name of names) {
+    if (isCustomMeasurementName(name)) {
+      weights.set(name, `1_${name}`);
+    } else {
+      const seamly = lookupSeamlyMeasurement(name);
+      // Use "0_" prefix for standard, sorted by ID (A01, B01, etc.)
+      weights.set(name, `0_${seamly?.id ?? name}`);
+    }
+  }
+
+  while (ready.length > 0) {
+    // Sort ready nodes by weight (Standard then Custom)
+    ready.sort((a, b) => {
+      const wa = weights.get(a)!;
+      const wb = weights.get(b)!;
+      if (wa < wb) return -1;
+      if (wa > wb) return 1;
+      return 0;
+    });
+
+    const n = ready.shift()!;
+    result.push(n);
+
+    for (const m of dependents.get(n) ?? []) {
+      inDegree.set(m, (inDegree.get(m) ?? 0) - 1);
+      if (inDegree.get(m) === 0) {
+        ready.push(m);
+      }
+    }
+  }
+
+  // Handle cycles or missing names by appending remaining items
+  if (result.length < names.length) {
+    const remaining = names.filter(name => !result.includes(name));
+    result.push(...remaining);
+  }
+
+  doc.measurementOrder = result;
+  return doc;
+}
+
+/**
  * Resolves all individual measurements in a document by evaluating their formulas.
  * Updates the `resolved`, `dependencies`, and `error` properties of each measurement.
  *
