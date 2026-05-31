@@ -23,6 +23,7 @@ const parser = new XMLParser({
   parseTagValue: false,
   parseAttributeValue: false,
   isArray: (_name, jpath) =>
+    typeof jpath === 'string' &&
     [
       'smis.body-measurements.m',
       'smms.body-measurements.m',
