@@ -18,6 +18,7 @@
     "lint": "gts lint",
     "clean": "gts clean",
     "compile": "tsc",
+    "docs": "typedoc",
     "fix": "gts fix",
     "prepare": "npm run compile",
     "pretest": "npm run compile",
@@ -30,8 +31,9 @@
   "devDependencies": {
     "@types/node": "^22.7.5",
     "esbuild": "^0.21.5",
+    "gts": "^7.0.0",
+    "typedoc": "^0.28.19",
     "typescript": "^5.6.3",
-    "vitest": "^1.6.0",
-    "gts": "^7.0.0"
+    "vitest": "^1.6.0"
   }
 }

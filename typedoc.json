@@ -1,0 +1,14 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/index.ts"],
+  "out": "docs",
+  "plugin": [],
+  "includeVersion": true,
+  "categorizeByGroup": true,
+  "sort": ["kind", "instance-first", "alphabetical"],
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "cleanOutputDir": true,
+  "githubPages": true,
+  "name": "SeamlyMe Core API Documentation"
+}
