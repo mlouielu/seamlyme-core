@@ -5,7 +5,6 @@ import {
 } from './catalog.js';
 import {NAMED_TEMPLATES} from './default-formulas.js';
 import {buildDependencyGraph, resolveMeasurements} from './expressions.js';
-import {loadMeasurementFile} from './file.js';
 import {parseSmis} from './smis.js';
 import type {
   CreateDocumentOptions,
@@ -53,6 +52,7 @@ export function createDocument(
     multisize: multisizeOpts = {},
     empty = false,
     template,
+    defaultValue,
   } = options;
 
   const root = type === 'multisize' ? 'smms' : 'smis';
@@ -88,11 +88,24 @@ export function createDocument(
 
   if (template) {
     const formulas =
-      NAMED_TEMPLATES[template] ?? loadTemplateFormulas(template);
+      typeof template === 'string'
+        ? (NAMED_TEMPLATES[template] ?? {})
+        : template;
     for (const [name, formula] of Object.entries(formulas)) {
       if (doc.measurements[name]) {
         doc.measurements[name].raw = formula;
         doc.measurements[name].hasValue = formula.trim() !== '';
+      }
+    }
+    resolveAll(doc);
+  }
+
+  if (defaultValue !== undefined) {
+    const raw = String(defaultValue);
+    for (const m of Object.values(doc.measurements)) {
+      if (!m.hasValue) {
+        m.raw = raw;
+        m.hasValue = true;
       }
     }
     resolveAll(doc);
@@ -108,15 +121,6 @@ function escapeXml(value: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
-}
-
-function loadTemplateFormulas(path: string): Record<string, string> {
-  const {document: templateDoc} = loadMeasurementFile(path);
-  const formulas: Record<string, string> = {};
-  for (const [name, m] of Object.entries(templateDoc.measurements)) {
-    if (m.hasValue) formulas[name] = m.raw;
-  }
-  return formulas;
 }
 
 /**

@@ -252,10 +252,17 @@ export interface CreateDocumentOptions {
   /** If true, creates a document with no measurements at all. Default: false. */
   empty?: boolean;
   /**
-   * Named built-in template (e.g. 'default') or a file path to a .smis file.
-   * Overlays pre-filled formulas onto catalog measurements.
+   * Default value applied to catalog measurements that have no formula or value.
+   * Only meaningful when `empty` is false.
+   * @example `defaultValue: 0` fills all empty measurements with `'0'`.
    */
-  template?: string;
+  defaultValue?: number | string;
+  /**
+   * Named built-in template (e.g. `'default'`) or a custom formula map
+   * (`Record<string, string>`) to overlay onto catalog measurements.
+   * For file-based templates, use `createDocumentFromTemplate` from `file.ts`.
+   */
+  template?: string | Record<string, string>;
 }
 
 /**

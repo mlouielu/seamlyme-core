@@ -1,4 +1,5 @@
 import {existsSync, readFileSync, writeFileSync} from 'node:fs';
+import {createDocument} from './document.js';
 import {
   detectMeasurementFile,
   modernExtensionForType,
@@ -6,6 +7,7 @@ import {
   serializeSmis,
 } from './smis.js';
 import type {
+  CreateDocumentOptions,
   LoadedMeasurementFile,
   MeasurementFileType,
   MeasurementFileWarning,
@@ -84,6 +86,33 @@ export function saveMeasurementFile(
 
   if (options.path) writeFileSync(options.path, xml, 'utf8');
   return {xml, warnings};
+}
+
+/**
+ * Creates a new document using a `.smis` file as the formula template.
+ * Loads the file, extracts all measurements that have a value, and passes
+ * them as the `template` overlay to `createDocument`.
+ *
+ * @param templatePath - Path to a `.smis` file to use as the template.
+ * @param options - Additional document creation options (unit, personal, etc.).
+ * @returns A new SeamlyDocument with template formulas pre-filled.
+ *
+ * @example
+ * ```typescript
+ * import { createDocumentFromTemplate } from './file.js';
+ * const doc = createDocumentFromTemplate('./my-template.smis', { unit: 'inch' });
+ * ```
+ */
+export function createDocumentFromTemplate(
+  templatePath: string,
+  options: Omit<CreateDocumentOptions, 'template'> = {},
+): SeamlyDocument {
+  const {document: templateDoc} = loadMeasurementFile(templatePath);
+  const formulas: Record<string, string> = {};
+  for (const [name, m] of Object.entries(templateDoc.measurements)) {
+    if (m.hasValue) formulas[name] = m.raw;
+  }
+  return createDocument({...options, template: formulas});
 }
 
 function detectFileWarnings(
