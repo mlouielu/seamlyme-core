@@ -227,6 +227,38 @@ export interface SeamlyDocument {
 }
 
 /**
+ * Options for `createDocument`.
+ *
+ * @example
+ * ```typescript
+ * const doc = createDocument({ unit: 'inch', template: 'default' });
+ * ```
+ */
+export interface CreateDocumentOptions {
+  /** Whether this is an 'individual' or 'multisize' document. Default: 'individual'. */
+  type?: MeasurementFileType;
+  /** Measurement unit. Default: 'cm'. */
+  unit?: SeamlyUnit;
+  /** General notes or metadata. Default: ''. */
+  notes?: string;
+  /** Whether the file is read-only. Default: false. */
+  readOnly?: boolean;
+  /** Pattern making system identifier. Default: '998'. */
+  pmSys?: string;
+  /** Personal information for individual documents. */
+  personal?: Partial<SeamlyPersonalInfo>;
+  /** Multisize system configuration (only for type: 'multisize'). */
+  multisize?: Partial<SeamlyMultisizeSystem>;
+  /** If true, creates a document with no measurements at all. Default: false. */
+  empty?: boolean;
+  /**
+   * Named built-in template (e.g. 'default') or a file path to a .smis file.
+   * Overlays pre-filled formulas onto catalog measurements.
+   */
+  template?: string;
+}
+
+/**
  * Options for parsing Seamly XML measurement files.
  *
  * @example

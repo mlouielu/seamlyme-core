@@ -3,8 +3,12 @@ import {
   SEAMLY_BY_ID,
   SEAMLY_BY_VAR,
 } from './catalog.js';
+import {NAMED_TEMPLATES} from './default-formulas.js';
 import {buildDependencyGraph, resolveMeasurements} from './expressions.js';
+import {loadMeasurementFile} from './file.js';
+import {parseSmis} from './smis.js';
 import type {
+  CreateDocumentOptions,
   MeasurementMetaPatch,
   MeasurementMoveDirection,
   NameConflictResolution,
@@ -15,6 +19,105 @@ import type {
   SeamlyMultisizeMeasurement,
   ValidationIssue,
 } from './types.js';
+
+/**
+ * Creates a new SeamlyDocument without needing to provide XML.
+ *
+ * - Default (no options): all 256 catalog entries with empty values.
+ * - `empty: true`: completely empty, no measurements.
+ * - `template: 'default'`: catalog entries with built-in default formulas pre-filled.
+ * - `template: './path.smis'`: catalog entries overlaid with values from a file.
+ *
+ * @param options - Document creation options.
+ * @returns A new SeamlyDocument.
+ *
+ * @example
+ * ```typescript
+ * import { createDocument } from './document.js';
+ *
+ * const blank = createDocument();
+ * const empty = createDocument({ empty: true });
+ * const withDefaults = createDocument({ unit: 'inch', template: 'default' });
+ * ```
+ */
+export function createDocument(
+  options: CreateDocumentOptions = {},
+): SeamlyDocument {
+  const {
+    type = 'individual',
+    unit = 'cm',
+    notes = '',
+    readOnly = false,
+    pmSys = '998',
+    personal = {},
+    multisize: multisizeOpts = {},
+    empty = false,
+    template,
+  } = options;
+
+  const root = type === 'multisize' ? 'smms' : 'smis';
+  const parts = [
+    `<${root}>`,
+    `<unit>${escapeXml(unit)}</unit>`,
+    `<read-only>${readOnly}</read-only>`,
+    `<notes>${escapeXml(notes)}</notes>`,
+    `<pm_system>${escapeXml(pmSys)}</pm_system>`,
+  ];
+
+  if (type === 'individual') {
+    parts.push(
+      '<personal>',
+      `<given-name>${escapeXml(personal['given-name'] ?? '')}</given-name>`,
+      `<family-name>${escapeXml(personal['family-name'] ?? '')}</family-name>`,
+      `<birth-date>${escapeXml(personal['birth-date'] ?? '')}</birth-date>`,
+      `<gender>${escapeXml(personal.gender ?? '')}</gender>`,
+      `<email>${escapeXml(personal.email ?? '')}</email>`,
+      '</personal>',
+    );
+  }
+
+  if (type === 'multisize') {
+    parts.push('<size>', String(multisizeOpts.baseSize ?? ''), '</size>');
+    parts.push('<height>', String(multisizeOpts.baseHeight ?? ''), '</height>');
+  }
+
+  parts.push(`</${root}>`);
+  const xml = parts.join('');
+
+  const doc = parseSmis(xml, {type, includeCatalog: !empty});
+
+  if (template) {
+    const formulas =
+      NAMED_TEMPLATES[template] ?? loadTemplateFormulas(template);
+    for (const [name, formula] of Object.entries(formulas)) {
+      if (doc.measurements[name]) {
+        doc.measurements[name].raw = formula;
+        doc.measurements[name].hasValue = formula.trim() !== '';
+      }
+    }
+    resolveAll(doc);
+  }
+
+  return doc;
+}
+
+function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function loadTemplateFormulas(path: string): Record<string, string> {
+  const {document: templateDoc} = loadMeasurementFile(path);
+  const formulas: Record<string, string> = {};
+  for (const [name, m] of Object.entries(templateDoc.measurements)) {
+    if (m.hasValue) formulas[name] = m.raw;
+  }
+  return formulas;
+}
 
 /**
  * Retrieves a measurement by name from the document.
