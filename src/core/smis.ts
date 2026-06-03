@@ -4,6 +4,7 @@ import {
   SEAMLY_BY_VAR,
   SEAMLY_MEASUREMENT_CATALOG,
 } from './catalog.js';
+import {SEAMLYME_FORMAT_VERSION} from './config.js';
 import {resolveMeasurements} from './expressions.js';
 import type {
   MeasurementFileInfo,
@@ -212,7 +213,7 @@ export function serializeSmis(
   const rootContent =
     document.type === 'multisize'
       ? {
-          version: document.version,
+          version: document.version || SEAMLYME_FORMAT_VERSION,
           unit: document.unit,
           'read-only': String(document.readOnly),
           notes: document.notes,
@@ -223,7 +224,7 @@ export function serializeSmis(
           },
         }
       : {
-          version: document.version,
+          version: document.version || SEAMLYME_FORMAT_VERSION,
           'read-only': String(document.readOnly),
           notes: document.notes,
           unit: document.unit,

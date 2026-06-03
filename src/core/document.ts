@@ -3,6 +3,7 @@ import {
   SEAMLY_BY_ID,
   SEAMLY_BY_VAR,
 } from './catalog.js';
+import {SEAMLYME_FORMAT_VERSION} from './config.js';
 import {NAMED_TEMPLATES} from './default-formulas.js';
 import {buildDependencyGraph, resolveMeasurements} from './expressions.js';
 import {parseSmis} from './smis.js';
@@ -58,6 +59,7 @@ export function createDocument(
   const root = type === 'multisize' ? 'smms' : 'smis';
   const parts = [
     `<${root}>`,
+    `<version>${SEAMLYME_FORMAT_VERSION}</version>`,
     `<unit>${escapeXml(unit)}</unit>`,
     `<read-only>${readOnly}</read-only>`,
     `<notes>${escapeXml(notes)}</notes>`,

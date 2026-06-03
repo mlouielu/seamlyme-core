@@ -35,6 +35,7 @@ import {
   validateDocument,
   validateKnownNames,
   validateResolvedMeasurements,
+  SEAMLYME_FORMAT_VERSION,
 } from '../src/core/index.js';
 import {generateFullBodySmis, generateSmisXml} from './generator.js';
 
@@ -63,7 +64,7 @@ describe('SeamlyME core', () => {
     const xml = generateFullBodySmis();
     const doc = parseSmis(xml, {filename: 'full_body.smis'});
 
-    expect(doc.version).toBe('0.3.4');
+    expect(doc.version).toBe(SEAMLYME_FORMAT_VERSION);
     expect(doc.unit).toBe('cm');
     expect(doc.pmSys).toBe('998');
     expect(doc.personal['given-name']).toBe('Full');
@@ -118,7 +119,7 @@ describe('SeamlyME core', () => {
 
   it('preserves inserted individual measurement order during serialization', () => {
     const doc = parseSmis(
-      '<smis><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="A" value="1"/><m name="C" value="3"/></body-measurements></smis>',
+      '<smis><version>0.3.4</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="A" value="1"/><m name="C" value="3"/></body-measurements></smis>',
       {includeCatalog: false},
     );
 
@@ -187,7 +188,7 @@ describe('SeamlyME core', () => {
     const doc = parseSmis(
       `<?xml version="1.0" encoding="UTF-8"?>
       <smis>
-        <version>0.3.3</version>
+        <version>0.3.4</version>
         <read-only>false</read-only>
         <notes><![CDATA[User notes here]]></notes>
         <unit>cm</unit>
@@ -221,7 +222,7 @@ describe('SeamlyME core', () => {
     const doc = parseSmis(
       `<?xml version="1.0" encoding="UTF-8"?>
       <smms>
-        <version>0.3.3</version>
+        <version>0.3.4</version>
         <unit>cm</unit>
         <read-only>false</read-only>
         <notes/>
@@ -248,7 +249,7 @@ describe('SeamlyME core', () => {
 
   it('serializes individual and multisize documents to modern Seamly roots', () => {
     const individual = parseSmis(
-      '<vit><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system>p1</pm_system><personal/><body-measurements><m name="G01" value="176"/></body-measurements></vit>',
+      '<vit><version>0.3.4</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system>p1</pm_system><personal/><body-measurements><m name="G01" value="176"/></body-measurements></vit>',
       {filename: 'legacy.vit', includeCatalog: false},
     );
     const individualXml = serializeSmis(individual);
@@ -259,7 +260,7 @@ describe('SeamlyME core', () => {
     expect(individualXml).toContain('<personal>');
 
     const multisize = parseSmis(
-      '<vst><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><size>48</size><height>176</height><body-measurements><m name="G01" base="176" size_increase="0" height_increase="1"/></body-measurements></vst>',
+      '<vst><version>0.3.4</version><unit>cm</unit><read-only>false</read-only><notes/><size>48</size><height>176</height><body-measurements><m name="G01" base="176" size_increase="0" height_increase="1"/></body-measurements></vst>',
       {filename: 'legacy.vst'},
     );
     const multisizeXml = serializeSmis(multisize);
@@ -273,7 +274,7 @@ describe('SeamlyME core', () => {
 
   it('loads XML or paths and warns when extension and root disagree', () => {
     const loaded = loadMeasurementFile(
-      '<vit><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="G01" value="176"/></body-measurements></vit>',
+      '<vit><version>0.3.4</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="G01" value="176"/></body-measurements></vit>',
       'renamed.smis',
     );
 
@@ -297,7 +298,7 @@ describe('SeamlyME core', () => {
 
   it('saves modern roots and warns about non-modern save extensions', () => {
     const doc = parseSmis(
-      '<vit><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="G01" value="176"/></body-measurements></vit>',
+      '<vit><version>0.3.4</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="G01" value="176"/></body-measurements></vit>',
       {includeCatalog: false},
     );
 
@@ -316,7 +317,7 @@ describe('SeamlyME core', () => {
 
   it('gets and edits individual measurements, then resolves values', () => {
     const doc = parseSmis(
-      '<smis><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="height" value="100"/></body-measurements></smis>',
+      '<smis><version>0.3.4</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="height" value="100"/></body-measurements></smis>',
       {includeCatalog: false},
     );
 
@@ -340,7 +341,7 @@ describe('SeamlyME core', () => {
 
   it('removes and renames measurements while updating formula references', () => {
     const doc = parseSmis(
-      '<smis><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="@a" value="10"/><m name="@b" value="@a + 5"/><m name="@c" value="@b + 1"/></body-measurements></smis>',
+      '<smis><version>0.3.4</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="@a" value="10"/><m name="@b" value="@a + 5"/><m name="@c" value="@b + 1"/></body-measurements></smis>',
       {includeCatalog: false},
     );
 
@@ -357,7 +358,7 @@ describe('SeamlyME core', () => {
 
   it('lists all, known, and custom measurements in document order', () => {
     const doc = parseSmis(
-      '<smis><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="height" value="100"/><m name="@custom" value="20"/><m name="G01" value="176"/></body-measurements></smis>',
+      '<smis><version>0.3.4</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="height" value="100"/><m name="@custom" value="20"/><m name="G01" value="176"/></body-measurements></smis>',
       {includeCatalog: false},
     );
 
@@ -406,7 +407,7 @@ describe('SeamlyME core', () => {
 
   it('builds document dependency graphs, finds dependents, detects cycles, and resolves all', () => {
     const doc = parseSmis(
-      '<smis><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="@a" value="@c + 1"/><m name="@b" value="@a + 1"/><m name="@c" value="@b + 1"/></body-measurements></smis>',
+      '<smis><version>0.3.4</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="@a" value="@c + 1"/><m name="@b" value="@a + 1"/><m name="@c" value="@b + 1"/></body-measurements></smis>',
       {includeCatalog: false},
     );
 
@@ -431,7 +432,7 @@ describe('SeamlyME core', () => {
 
   it('moves one measurement by direction or index', () => {
     const doc = parseSmis(
-      '<smis><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="@a" value="1"/><m name="@b" value="2"/><m name="@c" value="3"/><m name="@d" value="4"/></body-measurements></smis>',
+      '<smis><version>0.3.4</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="@a" value="1"/><m name="@b" value="2"/><m name="@c" value="3"/><m name="@d" value="4"/></body-measurements></smis>',
       {includeCatalog: false},
     );
 
@@ -450,7 +451,7 @@ describe('SeamlyME core', () => {
 
   it('moves multiple selected measurements as one block', () => {
     const doc = parseSmis(
-      '<smis><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="@a" value="1"/><m name="@b" value="2"/><m name="@c" value="3"/><m name="@d" value="4"/><m name="@e" value="5"/></body-measurements></smis>',
+      '<smis><version>0.3.4</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="@a" value="1"/><m name="@b" value="2"/><m name="@c" value="3"/><m name="@d" value="4"/><m name="@e" value="5"/></body-measurements></smis>',
       {includeCatalog: false},
     );
 
@@ -460,7 +461,7 @@ describe('SeamlyME core', () => {
 
   it('adds a measurement after a target row', () => {
     const doc = parseSmis(
-      '<smis><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="@a" value="1"/><m name="@c" value="3"/></body-measurements></smis>',
+      '<smis><version>0.3.4</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="@a" value="1"/><m name="@c" value="3"/></body-measurements></smis>',
       {includeCatalog: false},
     );
 
@@ -471,7 +472,7 @@ describe('SeamlyME core', () => {
 
   it('reorders measurements by dependencies and priority', () => {
     const doc = parseSmis(
-      '<smis><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements>' +
+      '<smis><version>0.3.4</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements>' +
         '<m name="@b" value="@a + 1"/>' + // Custom @b depends on @a
         '<m name="@a" value="10"/>' + // Custom @a
         '<m name="bust_circ" value="90"/>' + // Standard G04
@@ -492,7 +493,7 @@ describe('SeamlyME core', () => {
 
   it('clones and immutably updates document metadata and measurements', () => {
     const doc = parseSmis(
-      '<smis><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal><given-name>Jane</given-name></personal><body-measurements><m name="@a" value="1"/></body-measurements></smis>',
+      '<smis><version>0.3.4</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal><given-name>Jane</given-name></personal><body-measurements><m name="@a" value="1"/></body-measurements></smis>',
       {includeCatalog: false},
     );
 
@@ -522,7 +523,7 @@ describe('SeamlyME core', () => {
 
   it('resolves measurement name conflicts directly', () => {
     const doc = parseSmis(
-      '<smis><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="@custom" value="1"/><m name="@custom_1" value="2"/></body-measurements></smis>',
+      '<smis><version>0.3.4</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="@custom" value="1"/><m name="@custom_1" value="2"/></body-measurements></smis>',
       {includeCatalog: false},
     );
 
@@ -540,7 +541,7 @@ describe('SeamlyME core', () => {
 
   it('returns frontend-friendly individual measurement rows', () => {
     const doc = parseSmis(
-      '<smis><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="height" value="100"/><m name="@half" value="height / 2" full_name="Half height" description="Derived"/></body-measurements></smis>',
+      '<smis><version>0.3.4</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="height" value="100"/><m name="@half" value="height / 2" full_name="Half height" description="Derived"/></body-measurements></smis>',
       {includeCatalog: false},
     );
 
@@ -581,7 +582,7 @@ describe('SeamlyME core', () => {
 
   it('returns frontend-friendly multisize measurement rows', () => {
     const doc = parseSmis(
-      '<smms><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><size>48</size><height>176</height><body-measurements><m name="G01" base="176" size_increase="0" height_increase="1" full_name="Height"/><m name="@custom" base="10" size_increase="1" height_increase="2"/></body-measurements></smms>',
+      '<smms><version>0.3.4</version><unit>cm</unit><read-only>false</read-only><notes/><size>48</size><height>176</height><body-measurements><m name="G01" base="176" size_increase="0" height_increase="1" full_name="Height"/><m name="@custom" base="10" size_increase="1" height_increase="2"/></body-measurements></smms>',
     );
 
     expect(getMeasurementRows(doc)).toEqual([
@@ -614,7 +615,7 @@ describe('SeamlyME core', () => {
 
   it('marks unresolved and missing rows distinctly', () => {
     const doc = parseSmis(
-      '<smis><version>0.3.3</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="@bad" value="@missing + 1"/><m name="@blank" value=""/></body-measurements></smis>',
+      '<smis><version>0.3.4</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="@bad" value="@missing + 1"/><m name="@blank" value=""/></body-measurements></smis>',
       {includeCatalog: false},
     );
 

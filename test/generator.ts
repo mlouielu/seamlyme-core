@@ -1,5 +1,7 @@
 import {SEAMLY_MEASUREMENT_CATALOG} from '../src/core/catalog.js';
 
+import {SEAMLYME_FORMAT_VERSION} from '../src/core/config.js';
+
 export interface GeneratorOptions {
   type?: 'individual' | 'multisize';
   complexity?: 'empty' | 'some' | 'full' | 'errors';
@@ -14,7 +16,7 @@ export function generateSmisXml(options: GeneratorOptions = {}): string {
   const root = type === 'multisize' ? 'smms' : 'smis';
 
   let content = `<?xml version="1.0" encoding="UTF-8"?>\n<${root}>\n`;
-  content += '  <version>0.3.4</version>\n';
+  content += `  <version>${SEAMLYME_FORMAT_VERSION}</version>\n`;
   content += '  <unit>cm</unit>\n';
   content += '  <read-only>false</read-only>\n';
   content += `  <notes>Generated for testing (${complexity})</notes>\n`;
@@ -112,8 +114,7 @@ export function generateFullBodySmis(): string {
   ];
 
   let content = '<?xml version="1.0" encoding="UTF-8"?>\n<smis>\n';
-  content +=
-    '  <version>0.3.4</version>\n  <unit>cm</unit>\n  <read-only>false</read-only>\n  <notes>Full body 160cm</notes>\n';
+  content += `  <version>${SEAMLYME_FORMAT_VERSION}</version>\n  <unit>cm</unit>\n  <read-only>false</read-only>\n  <notes>Full body 160cm</notes>\n`;
   content +=
     '  <pm_system>998</pm_system>\n  <personal><given-name>Full</given-name><family-name>Body</family-name></personal>\n';
   content += '  <body-measurements>\n';
