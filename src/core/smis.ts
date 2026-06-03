@@ -4,7 +4,7 @@ import {
   SEAMLY_BY_VAR,
   SEAMLY_MEASUREMENT_CATALOG,
 } from './catalog.js';
-import {SEAMLYME_FORMAT_VERSION} from './config.js';
+import {SEAMLYME_CORE_VERSION, SEAMLYME_FORMAT_VERSION} from './config.js';
 import {resolveMeasurements} from './expressions.js';
 import type {
   MeasurementFileInfo,
@@ -235,9 +235,11 @@ export function serializeSmis(
           },
         };
 
-  return `<?xml version="1.0" encoding="UTF-8"?>\n${builder.build({
-    [rootTag]: rootContent,
-  })}\n`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<!--Measurements created with SeamlyMe-core ${SEAMLYME_CORE_VERSION} (https://github.com/mlouielu/seamlyme-core).-->\n${builder.build(
+    {
+      [rootTag]: rootContent,
+    },
+  )}\n`;
 }
 
 /**

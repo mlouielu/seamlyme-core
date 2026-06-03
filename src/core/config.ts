@@ -9,3 +9,8 @@ export const VERSION_PATCH = 4;
  * SeamlyMe format current version string.
  */
 export const SEAMLYME_FORMAT_VERSION = `${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}`;
+
+/**
+ * SeamlyMe-core package version.
+ */
+export const SEAMLYME_CORE_VERSION = '0.1.0';
