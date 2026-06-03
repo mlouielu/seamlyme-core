@@ -1,3 +1,5 @@
+import packageJson from '../../package.json' with {type: 'json'};
+
 /**
  * SeamlyMe format version components.
  */
@@ -13,4 +15,4 @@ export const SEAMLYME_FORMAT_VERSION = `${VERSION_MAJOR}.${VERSION_MINOR}.${VERS
 /**
  * SeamlyMe-core package version.
  */
-export const SEAMLYME_CORE_VERSION = '0.1.0';
+export const SEAMLYME_CORE_VERSION = packageJson.version;
