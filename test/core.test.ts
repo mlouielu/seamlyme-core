@@ -117,6 +117,40 @@ describe('SeamlyME core', () => {
     expect(reparsed.notes).toContain('Full body');
   });
 
+  it('resolves complex ternary expressions (regression)', () => {
+    const expression =
+      'bust_circ>0?((((bust_circ-76)/4)*2)+6):waist_circ>0?(((waist_circ-56)/4)*2)+6:hip_circ>0?((((hip_circ-82)/4)*2)+6):6';
+
+    const doc = parseSmis(
+      `<smis>
+        <version>0.3.4</version>
+        <body-measurements>
+          <m name="bust_circ" value="88"/>
+          <m name="waist_circ" value="0"/>
+          <m name="hip_circ" value="0"/>
+          <m name="@formula" value="${expression}"/>
+        </body-measurements>
+      </smis>`,
+      {includeCatalog: false},
+    );
+
+    // ((88-76)/4)*2 + 6 = (12/4)*2 + 6 = 3*2 + 6 = 12
+    expect(doc.measurements['@formula'].error).toBeNull();
+    expect(doc.measurements['@formula'].resolved).toBe(12);
+
+    // Test with waist_circ instead
+    doc.measurements.bust_circ.raw = '0';
+    doc.measurements.waist_circ.raw = '68';
+    resolveAll(doc);
+    // ((68-56)/4)*2 + 6 = (12/4)*2 + 6 = 12
+    expect(doc.measurements['@formula'].resolved).toBe(12);
+
+    // Test default
+    doc.measurements.waist_circ.raw = '0';
+    resolveAll(doc);
+    expect(doc.measurements['@formula'].resolved).toBe(6);
+  });
+
   it('preserves inserted individual measurement order during serialization', () => {
     const doc = parseSmis(
       '<smis><version>0.3.4</version><unit>cm</unit><read-only>false</read-only><notes/><pm_system/><personal/><body-measurements><m name="A" value="1"/><m name="C" value="3"/></body-measurements></smis>',
